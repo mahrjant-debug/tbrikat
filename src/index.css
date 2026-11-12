@@ -1,0 +1,234 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: 'Tajawal', 'Cairo', system-ui, sans-serif;
+  --font-cairo: 'Cairo', 'Tajawal', system-ui, sans-serif;
+  --font-amiri: 'Amiri', 'Traditional Arabic', serif;
+  --font-almarai: 'Almarai', 'Tajawal', sans-serif;
+
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold-soft: var(--gold-soft);
+  --color-line: var(--line);
+}
+
+/* ---------- الثيمات الأربعة ---------- */
+:root,
+[data-theme='royal'] {
+  --paper: #fffdf8;
+  --ink: #3a2a10;
+  --ink-soft: #7a6540;
+  --accent: #8a5f12;
+  --accent-soft: #f6ecd2;
+  --gold: #c99a3b;
+  --gold-deep: #9a6f1a;
+  --gold-soft: #ecd9a4;
+  --line: #e6d6a8;
+  --bg-1: #fffdf6;
+  --bg-2: #f8efd6;
+  --bg-3: #efdcaa;
+  --glow: rgba(201, 154, 59, 0.45);
+  --confetti-1: #c99a3b;
+  --confetti-2: #f3d98b;
+  --confetti-3: #fff4cf;
+}
+[data-theme='emerald'] {
+  --paper: #fbfffc;
+  --ink: #0f3a2b;
+  --ink-soft: #3f6f5c;
+  --accent: #0b6b4a;
+  --accent-soft: #daf3e7;
+  --gold: #c8a24a;
+  --gold-deep: #8f6f1d;
+  --gold-soft: #e8d9a0;
+  --line: #bfe3d1;
+  --bg-1: #fbfffc;
+  --bg-2: #e4f6ec;
+  --bg-3: #c9ebd9;
+  --glow: rgba(11, 107, 74, 0.4);
+  --confetti-1: #0b6b4a;
+  --confetti-2: #c8a24a;
+  --confetti-3: #e4f6ec;
+}
+[data-theme='rose'] {
+  --paper: #fffafb;
+  --ink: #4a1d2b;
+  --ink-soft: #8a5666;
+  --accent: #b03a5f;
+  --accent-soft: #fde6ee;
+  --gold: #c99a3b;
+  --gold-deep: #9a6f1a;
+  --gold-soft: #f1d9b0;
+  --line: #f1c9d6;
+  --bg-1: #fffafb;
+  --bg-2: #fdebf0;
+  --bg-3: #f9d3df;
+  --glow: rgba(176, 58, 95, 0.4);
+  --confetti-1: #e07a9b;
+  --confetti-2: #c99a3b;
+  --confetti-3: #fde6ee;
+}
+[data-theme='navy'] {
+  --paper: #fbfcff;
+  --ink: #142347;
+  --ink-soft: #4b5a80;
+  --accent: #1d3a7a;
+  --accent-soft: #e0e8fb;
+  --gold: #c99a3b;
+  --gold-deep: #9a6f1a;
+  --gold-soft: #ecd9a4;
+  --line: #c9d5f1;
+  --bg-1: #fbfcff;
+  --bg-2: #e9eefb;
+  --bg-3: #d3def5;
+  --glow: rgba(29, 58, 122, 0.4);
+  --confetti-1: #1d3a7a;
+  --confetti-2: #c99a3b;
+  --confetti-3: #e9eefb;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #fbf7ee;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+::selection {
+  background: var(--gold-soft);
+}
+
+/* ---------- خلفية الشاشة ---------- */
+.stage-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 0%, var(--bg-3) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 100% 100%, var(--bg-3) 0%, transparent 55%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2));
+}
+
+/* ---------- بطاقة التهنئة ---------- */
+.gold-frame {
+  position: relative;
+  background: linear-gradient(160deg, #ffffff 0%, var(--paper) 55%, var(--accent-soft) 100%);
+  border: 0.18rem solid var(--gold);
+  box-shadow:
+    0 0 0 0.35rem var(--paper),
+    0 0 0 0.5rem var(--gold-soft),
+    0 1.6rem 4rem -1rem var(--glow);
+}
+.gold-text {
+  background: linear-gradient(100deg, var(--gold-deep), var(--gold) 40%, #f1d78f 55%, var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.glass {
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+}
+
+/* ---------- جزيئات ذهبية عائمة ---------- */
+@keyframes float-up {
+  0% {
+    transform: translate3d(0, 105vh, 0) scale(var(--s, 1));
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--o, 0.7);
+  }
+  90% {
+    opacity: var(--o, 0.7);
+  }
+  100% {
+    transform: translate3d(var(--dx, 3vw), -15vh, 0) scale(var(--s, 1));
+    opacity: 0;
+  }
+}
+.particle {
+  position: absolute;
+  bottom: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 35%, #fff6d4, var(--gold) 55%, transparent 72%);
+  animation: float-up var(--d, 18s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  will-change: transform, opacity;
+}
+
+/* ---------- وميض ذهبي عند الاعتماد ---------- */
+@keyframes gold-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gold-flash {
+  background: radial-gradient(circle at 50% 50%, #fff7d6 0%, var(--gold) 45%, transparent 75%);
+  animation: gold-flash 1.4s ease-out forwards;
+}
+
+/* ---------- شريط الصور ---------- */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--marquee-duration, 60s) linear infinite;
+}
+
+/* ---------- وميض عنوان ---------- */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--glow);
+  }
+  100% {
+    box-shadow: 0 0 0 1.2rem transparent;
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle,
+  .marquee-track {
+    animation-duration: 120s;
+  }
+}
+
+/* شريط تمرير أنيق */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft) transparent;
+}
