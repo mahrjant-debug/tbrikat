@@ -25,10 +25,16 @@ export const app = initializeApp({
  * ذاكرة تخزين محلية دائمة (تقلل القراءات)، ودعم تعدد التبويبات،
  * وتجاهل الحقول undefined لأنها تُفشل الكتابة بخلاف ذلك.
  */
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  ignoreUndefinedProperties: true,
-});
+const databaseId = env.VITE_FIREBASE_DATABASE_ID || '(default)';
+
+export const db = initializeFirestore(
+  app,
+  {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    ignoreUndefinedProperties: true,
+  },
+  databaseId,
+);
 
 export const useEmulator = env.VITE_USE_EMULATOR === 'true';
 if (useEmulator) connectFirestoreEmulator(db, '127.0.0.1', 8080);

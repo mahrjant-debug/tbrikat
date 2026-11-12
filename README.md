@@ -22,7 +22,8 @@
    npx firebase-tools deploy --only firestore:rules
    ```
    > أنشئ حسابات المشرفين أنت من Firebase Console **قبل** نشر القواعد، حتى لا يستطيع أحد تسجيل بريد مشرف لم تُنشئه بعد.
-5. انسخ `.env.example` إلى `.env.local` واملأ مفاتيح تطبيق الويب (Project settings → Your apps).
+5. إن كانت قاعدة Firestore **مسمّاة** (وليست `(default)`) فاكتب معرّفها في `VITE_FIREBASE_DATABASE_ID`، وعدّل `database` في `firebase.json` ليطابقها.
+6. انسخ `.env.example` إلى `.env.local` واملأ مفاتيح تطبيق الويب (Project settings → Your apps).
 
 ```bash
 npm install
