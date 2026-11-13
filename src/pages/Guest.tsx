@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { CheckCircle2, Clock, Loader2, PenLine, Send, ShieldCheck, Sparkles } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, MonitorPlay, PenLine, Send, ShieldCheck, Sparkles } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
 import { Particles } from '../components/Particles';
 import { useBannedWords, useSettings } from '../hooks/useData';
@@ -7,6 +7,7 @@ import { celebrateGuest } from '../lib/confetti';
 import { GUEST_COOLDOWN_MS, NAME_MAX, QUICK_PHRASES, TEXT_MAX } from '../lib/constants';
 import { countCongratulations, submitCongrat } from '../lib/db';
 import { handleFirestoreError } from '../lib/firebase';
+import { navigate } from '../lib/router';
 import { safeStorage } from '../lib/storage';
 import { initialStatus, validateGuest } from '../lib/validation';
 import type { CongratStatus } from '../lib/types';
@@ -232,6 +233,18 @@ export default function Guest() {
             </p>
           </form>
         )}
+
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('display');
+          }}
+          className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-line bg-paper px-5 py-2.5 font-cairo text-sm font-extrabold text-gold-deep shadow-sm transition active:scale-95"
+        >
+          <MonitorPlay size={18} aria-hidden="true" />
+          العودة إلى شاشة العرض الرئيسية
+        </a>
       </div>
     </div>
   );
