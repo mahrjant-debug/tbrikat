@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 import type { Congrat } from '../../lib/types';
 
 const BLESSINGS = [
-  'دامت ديارك عامرة بالأفراح والمسرات',
+  'دامت دياركم عامرة بالافراح والمسرات',
   'بارك الله لكما وبارك عليكما وجمع بينكما في خير',
   'ألف مبروك، وعقبى لكل شاب وشابة',
   'جعله الله زواجاً ميموناً وحياةً سعيدة',
@@ -57,7 +57,7 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
       <div className="flex shrink-0 items-center justify-between px-[3%] pt-[1.1rem]">
         <span className="flex items-center gap-2 font-cairo text-[1.15rem] font-extrabold text-gold-deep">
           <span className="h-3 w-3 rounded-full bg-gold/70" aria-hidden="true" />
-          تهنئة مباركة للعروسين
+          تهنئة
         </span>
         {position ? (
           <span
@@ -92,7 +92,7 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
       </div>
 
       <div className="mx-[3%] shrink-0 border-t border-line/70" />
-      <div className="flex shrink-0 items-center justify-between gap-6 px-[3%] py-[1rem]">
+      <div className="flex shrink-0 flex-col items-start gap-[0.6rem] px-[3%] py-[1rem] lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="flex min-w-0 items-center gap-4">
           <span
             className="float-soft flex h-[3.4rem] w-[3.4rem] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 font-cairo text-[1.9rem] font-extrabold text-amber-900 shadow-sm"
@@ -102,12 +102,12 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
           </span>
           <div className="min-w-0 leading-tight">
             <div className="font-almarai text-[0.95rem] text-ink-soft">المهنئ الكريم:</div>
-            <div className="truncate font-cairo text-[1.8rem] font-extrabold text-ink">{card.name}</div>
+            <div className="break-words font-cairo text-[1.8rem] font-extrabold text-ink lg:truncate">{card.name}</div>
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-2 font-almarai text-[1.2rem] font-bold text-ink-soft">
           <Sparkles className="twinkle h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
-          <span className="truncate">{blessing}</span>
+          <span className="lg:truncate">{blessing}</span>
         </div>
       </div>
 
