@@ -31,7 +31,7 @@ export const PhotoStrip = memo(function PhotoStrip({
         {items.map((p, i) => (
           <figure key={`${p.id}-${i}`} className="m-0 shrink-0 text-center"
             style={{ width: 'min(15rem, 22dvh)' }} dir="rtl">
-            <div className="photo-frame">
+            <div className="photo-frame" style={{ '--glint-delay': `${(i % 9) * 0.8}s` } as CSSProperties}>
               <img src={p.dataUrl} alt={p.name || ''} draggable={false} className="aspect-[1/1] w-full rounded-[0.85rem] object-cover object-top" />
             </div>
             {label || p.name ? (

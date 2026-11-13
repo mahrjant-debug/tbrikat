@@ -265,3 +265,171 @@ button:disabled {
   transform-origin: right center;
   animation: bar-fill 10s linear forwards;
 }
+
+/* ======================================================================
+   موشن جرافيكس الشاشة الرئيسية — تعمل فقط عند تفعيل الجزيئات (.fx)
+   وتتوقف تلقائياً عند prefers-reduced-motion. كلها transform/opacity خفيفة.
+   ====================================================================== */
+
+/* هالات ضوء بطيئة تنجرف في الخلفية */
+@keyframes aurora-a {
+  from { transform: translate3d(-8%, -6%, 0) scale(1); }
+  to { transform: translate3d(10%, 8%, 0) scale(1.25); }
+}
+@keyframes aurora-b {
+  from { transform: translate3d(8%, 6%, 0) scale(1.15); }
+  to { transform: translate3d(-10%, -8%, 0) scale(0.95); }
+}
+.aurora {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 9999px;
+  pointer-events: none;
+  will-change: transform;
+}
+.aurora-a {
+  top: -35vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.38), transparent 62%);
+  animation: aurora-a 26s ease-in-out infinite alternate;
+}
+.aurora-b {
+  bottom: -38vmax;
+  left: -22vmax;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.22), transparent 62%);
+  animation: aurora-b 32s ease-in-out infinite alternate;
+}
+
+/* لمعان يمرّ على عنوان الجدارة */
+@keyframes title-shimmer {
+  to { background-position: -200% center; }
+}
+.fx .gold-title {
+  background: linear-gradient(100deg, var(--gold-deep) 0%, #7a4a0a 25%, #f5b82e 45%, #fff3c2 50%, #f5b82e 55%, #7a4a0a 75%, var(--gold-deep) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shimmer 7s linear infinite;
+}
+
+/* شريط ضوء قطري يعبر البطاقة كل بضع ثوانٍ */
+@keyframes sheen-sweep {
+  0%, 62% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  68% { opacity: 1; }
+  100% { transform: translateX(260%) skewX(-18deg); opacity: 0; }
+}
+.fx .sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  pointer-events: none;
+  animation: sheen-sweep 9s ease-in-out infinite;
+}
+
+/* حلقات تنبض حول رمز QR كأنه يدعو للمسح */
+@keyframes ring-ping {
+  0% { transform: scale(0.96); opacity: 0.55; }
+  100% { transform: scale(1.22); opacity: 0; }
+}
+.fx .ping-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.1rem;
+  border: 0.18rem solid var(--gold);
+  pointer-events: none;
+  animation: ring-ping 3.2s ease-out infinite;
+}
+.fx .ping-ring.delay {
+  animation-delay: 1.6s;
+}
+
+/* خط مسح يمرّ على الرمز */
+@keyframes scan-line {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 0.9; }
+  90% { opacity: 0.9; }
+  100% { transform: translateY(var(--scan-h, 11rem)); opacity: 0; }
+}
+.fx .scan-line {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 0.5rem;
+  height: 0.2rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  box-shadow: 0 0 0.6rem var(--gold);
+  pointer-events: none;
+  animation: scan-line 3.6s ease-in-out infinite;
+}
+
+/* لمعة على إطارات الصور بتأخير متدرج */
+@keyframes frame-glint {
+  0%, 70% { transform: translateX(-140%) skewX(-20deg); }
+  100% { transform: translateX(340%) skewX(-20deg); }
+}
+.photo-frame {
+  position: relative;
+  overflow: hidden;
+}
+.fx .photo-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  pointer-events: none;
+  animation: frame-glint 8s ease-in-out infinite;
+  animation-delay: var(--glint-delay, 0s);
+}
+
+/* حركات عائمة ناعمة */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.25rem); }
+}
+.fx .float-soft {
+  animation: float-soft 3.8s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.35) rotate(18deg); opacity: 0.65; }
+}
+.fx .twinkle {
+  animation: twinkle 2.6s ease-in-out infinite;
+}
+@keyframes wiggle {
+  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
+  86% { transform: rotate(-9deg) scale(1.06); }
+  90% { transform: rotate(8deg) scale(1.06); }
+  94% { transform: rotate(-5deg); }
+}
+.fx .wiggle {
+  animation: wiggle 5.5s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0.2rem 0.8rem -0.2rem rgba(249, 115, 22, 0.55); }
+  50% { box-shadow: 0 0.2rem 1.5rem 0.1rem rgba(249, 115, 22, 0.85); }
+}
+.fx .glow-pulse {
+  animation: glow-pulse 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .fx .gold-title,
+  .fx .sheen::after,
+  .fx .ping-ring,
+  .fx .scan-line,
+  .fx .photo-frame::after,
+  .fx .float-soft,
+  .fx .twinkle,
+  .fx .wiggle,
+  .fx .glow-pulse {
+    animation: none;
+  }
+}

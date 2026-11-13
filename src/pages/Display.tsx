@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Particles } from '../components/Particles';
 import { Navbar } from '../components/Navbar';
 import { CardStage } from '../components/display/CardStage';
@@ -201,9 +201,12 @@ export default function Display() {
   const preset = getPreset(settings.backgroundPreset);
   const bgImage = settings.backgroundMode === 'custom' ? (customBg ? `url("${customBg}")` : '') : preset.image;
   const bgCover = settings.backgroundMode === 'custom';
+  // المؤثرات الحركية والجزيئات تتبع نفس الخيار (إعدادات المشرف + زر «إخفاء الجزيئات» في الشريط)
+  const fx = settings.particlesEnabled && !prefs.hideParticles;
 
   return (
-    <div data-theme={settings.theme} className="stage-bg relative min-h-dvh overflow-hidden lg:h-dvh">
+    <MotionConfig reducedMotion="user">
+    <div data-theme={settings.theme} className={`stage-bg relative min-h-dvh overflow-hidden lg:h-dvh ${fx ? 'fx' : ''}`}>
       {bgImage ? (
         <div
           className="pointer-events-none absolute inset-0"
@@ -219,15 +222,33 @@ export default function Display() {
           }}
         />
       ) : null}
-      {settings.particlesEnabled && !prefs.hideParticles ? <Particles /> : null}
+      {fx ? (
+        <>
+          <div className="aurora aurora-a" aria-hidden="true" />
+          <div className="aurora aurora-b" aria-hidden="true" />
+          <Particles />
+        </>
+      ) : null}
 
       <Navbar autoHide />
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full flex-col gap-[1.2rem] p-[1.4rem] lg:h-full lg:min-h-0 lg:w-[87%] lg:px-0">
-        <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
+        <motion.div
+          className="shrink-0"
+          initial={{ opacity: 0, y: -36 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75, ease: 'easeOut' }}
+        >
+          <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
+        </motion.div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row">
-          <main className="relative min-h-[28rem] min-w-0 flex-1 lg:min-h-0">
+          <motion.main
+            className="relative min-h-[28rem] min-w-0 flex-1 lg:min-h-0"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: 'easeOut' }}
+          >
             {phase === 'countdown' ? (
               <CountdownPanel title={cdTitle} target={cdTarget} />
             ) : phase === 'finale' ? (
@@ -240,15 +261,29 @@ export default function Display() {
                 <Highlight key={highlight.id} card={highlight} sound={sound} onDone={onHighlightDone} />
               ) : null}
             </AnimatePresence>
-          </main>
+          </motion.main>
 
-          <aside className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[26rem]">
+          <motion.aside
+            className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[26rem]"
+            initial={{ opacity: 0, x: -48 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
+          >
             <QrBox compact={settings.showPartners && partners.length > 0} />
             {settings.showPartners ? <PartnersBox partners={partners} /> : null}
-          </aside>
+          </motion.aside>
         </div>
 
-        <PhotoStrip photos={photos} speed={settings.stripSpeed} label={settings.photoLabel} />
+        {photos.length ? (
+          <motion.div
+            className="shrink-0"
+            initial={{ opacity: 0, y: 48 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.45, ease: 'easeOut' }}
+          >
+            <PhotoStrip photos={photos} speed={settings.stripSpeed} label={settings.photoLabel} />
+          </motion.div>
+        ) : null}
       </div>
 
       <AnimatePresence>
@@ -264,5 +299,6 @@ export default function Display() {
         ) : null}
       </AnimatePresence>
     </div>
+    </MotionConfig>
   );
 }

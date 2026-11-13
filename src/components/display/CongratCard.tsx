@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { Fragment, memo } from 'react';
+import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 import type { Congrat } from '../../lib/types';
 
@@ -41,8 +42,11 @@ interface Props {
 /** بطاقة التهنئة الكبيرة */
 export const CongratCard = memo(function CongratCard({ card, position, durationSec, badge }: Props) {
   const blessing = BLESSINGS[hash(card.id) % BLESSINGS.length];
+  // ظهور الكلمات تباعاً (بحد أقصى ~1.2 ثانية للنصوص الطويلة)
+  const words = card.text.split(/\s+/).filter(Boolean);
+  const step = Math.min(0.07, 1.2 / Math.max(words.length, 1));
   return (
-    <article className="card-surface relative flex h-full w-full flex-col overflow-hidden rounded-[1.8rem]">
+    <article className="card-surface sheen relative flex h-full w-full flex-col overflow-hidden rounded-[1.8rem]">
       <div className="h-[0.5rem] shrink-0 bg-gradient-to-l from-amber-300 via-orange-400 to-amber-400" />
       {badge ? (
         <span className="absolute left-1/2 top-[1.1rem] z-10 -translate-x-1/2 rounded-full bg-accent px-6 py-1.5 font-cairo text-[1.15rem] font-extrabold text-white shadow-lg">
@@ -67,8 +71,23 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
       </div>
 
       <div className="flex min-h-0 flex-1 items-center justify-center px-[6%] py-4 text-center">
-        <p className={`font-cairo font-extrabold text-ink [text-wrap:balance] ${textSize(card.text.length)}`}>
-          “{card.text}”
+        <p className={`font-cairo font-extrabold text-ink [text-wrap:balance] ${textSize(card.text.length)}`} aria-label={card.text}>
+          <span aria-hidden="true">“</span>
+          {words.map((w, i) => (
+            <Fragment key={i}>
+              <motion.span
+                aria-hidden="true"
+                className="inline-block"
+                initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.55, delay: 0.3 + i * step, ease: 'easeOut' }}
+              >
+                {w}
+              </motion.span>
+              {i < words.length - 1 ? ' ' : null}
+            </Fragment>
+          ))}
+          <span aria-hidden="true">”</span>
         </p>
       </div>
 
@@ -76,7 +95,7 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
       <div className="flex shrink-0 items-center justify-between gap-6 px-[3%] py-[1rem]">
         <div className="flex min-w-0 items-center gap-4">
           <span
-            className="flex h-[3.4rem] w-[3.4rem] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 font-cairo text-[1.9rem] font-extrabold text-amber-900 shadow-sm"
+            className="float-soft flex h-[3.4rem] w-[3.4rem] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-400 font-cairo text-[1.9rem] font-extrabold text-amber-900 shadow-sm"
             aria-hidden="true"
           >
             {initialOf(card.name)}
@@ -87,7 +106,7 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-2 font-almarai text-[1.2rem] font-bold text-ink-soft">
-          <Sparkles className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+          <Sparkles className="twinkle h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
           <span className="truncate">{blessing}</span>
         </div>
       </div>

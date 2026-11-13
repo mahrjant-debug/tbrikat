@@ -38,7 +38,7 @@ export const PartnersBox = memo(function PartnersBox({ partners }: { partners: P
             {view.map((p) => (
               <div key={p.id} className="flex min-h-[6.4rem] items-center gap-[1rem] rounded-2xl border border-line bg-white px-[1rem] py-[0.7rem]">
                 {p.logo ? (
-                  <img src={p.logo} alt="" className="h-[5rem] w-[5rem] shrink-0 rounded-xl object-contain" draggable={false} />
+                  <img src={p.logo} alt="" className="float-soft h-[5rem] w-[5rem] shrink-0 rounded-xl object-contain" draggable={false} />
                 ) : (
                   <div className="flex h-[5rem] w-[5rem] shrink-0 items-center justify-center rounded-xl bg-accent-soft font-cairo text-3xl font-extrabold text-accent">
                     {p.name.slice(0, 1)}

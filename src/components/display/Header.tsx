@@ -26,7 +26,7 @@ export const Header = memo(function Header({
     <header className="card-surface grid shrink-0 grid-cols-1 items-center gap-x-6 gap-y-3 rounded-[1.6rem] px-[2%] py-[0.9rem] lg:grid-cols-[1fr_auto_1fr]">
       {/* الهوية (يمين) */}
       <div className="flex min-w-0 items-center gap-4">
-        <Logo src={settings.hasLogo ? logo : undefined} className="h-[4.6rem] w-[4.6rem] shrink-0 rounded-full" />
+        <Logo src={settings.hasLogo ? logo : undefined} className="float-soft h-[4.6rem] w-[4.6rem] shrink-0 rounded-full" />
         <div className="min-w-0 leading-tight">
           <h2 className="truncate font-cairo text-[2rem] font-extrabold text-ink">{settings.names}</h2>
           <p className="truncate font-cairo text-[1.25rem] font-bold text-gold-deep">{settings.title}</p>
@@ -60,16 +60,16 @@ export const Header = memo(function Header({
           className="flex items-center gap-2 rounded-full border border-line bg-paper px-5 py-2 font-cairo font-extrabold text-gold-deep shadow-sm"
           aria-label="عدد التهاني المعتمدة"
         >
-          <Award className="h-6 w-6 text-gold" aria-hidden="true" />
+          <Award className="float-soft h-6 w-6 text-gold" aria-hidden="true" />
           <span className="text-[1.5rem] tabular-nums">{count}</span>
           <span className="text-[1.05rem]">تهنئة مباركة</span>
         </div>
         <button
           type="button"
           onClick={onCelebrate}
-          className="flex items-center gap-2 rounded-full bg-gradient-to-l from-orange-500 to-amber-400 px-5 py-2 font-cairo text-[1.1rem] font-extrabold text-white shadow-md transition hover:brightness-105 active:scale-95"
+          className="glow-pulse flex items-center gap-2 rounded-full bg-gradient-to-l from-orange-500 to-amber-400 px-5 py-2 font-cairo text-[1.1rem] font-extrabold text-white shadow-md transition hover:brightness-105 active:scale-95"
         >
-          <PartyPopper className="h-5 w-5" aria-hidden="true" />
+          <PartyPopper className="wiggle h-5 w-5" aria-hidden="true" />
           احتفال
         </button>
       </div>

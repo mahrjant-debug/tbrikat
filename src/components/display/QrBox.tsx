@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, type CSSProperties } from 'react';
 import QRCode from 'qrcode';
 import { Camera, ExternalLink, Maximize2 } from 'lucide-react';
 import { Modal } from '../ui';
@@ -38,17 +38,23 @@ export const QrBox = memo(function QrBox({ compact = false }: { compact?: boolea
           امسح الباركود للتهنئة
         </span>
 
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="تكبير رمز QR"
+        <div
+          className={`relative aspect-square ${compact ? '' : 'w-full max-w-[16.5rem]'}`}
           style={compact ? { width: 'min(12rem, 20dvh)' } : undefined}
-          className={`aspect-square overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-md transition hover:shadow-xl ${
-            compact ? '' : 'w-full max-w-[16.5rem]'
-          }`}
         >
-          {src ? <img src={src} alt="رمز QR لصفحة التهنئة" className="h-full w-full" draggable={false} /> : null}
-        </button>
+          <span className="ping-ring" aria-hidden="true" />
+          <span className="ping-ring delay" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="تكبير رمز QR"
+            style={{ '--scan-h': compact ? 'min(10.4rem, 17.4dvh)' : '14.6rem' } as CSSProperties}
+            className="relative h-full w-full overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-md transition hover:shadow-xl"
+          >
+            {src ? <img src={src} alt="رمز QR لصفحة التهنئة" className="h-full w-full" draggable={false} /> : null}
+            <span className="scan-line" aria-hidden="true" />
+          </button>
+        </div>
 
         <div className="leading-snug">
           <div className="font-cairo text-[1.15rem] font-extrabold text-ink">وجّه كاميرا هاتفك للمسح</div>
