@@ -1,18 +1,17 @@
 import { memo, useMemo } from 'react';
-import { Award, CalendarDays, MapPin, PartyPopper } from 'lucide-react';
+import { CalendarDays, MapPin, PartyPopper, Send } from 'lucide-react';
 import { formatGregorian, formatHijri } from '../../lib/dates';
+import { navigate } from '../../lib/router';
 import type { Settings } from '../../lib/types';
 import { Logo } from '../Logo';
 
 export const Header = memo(function Header({
   settings,
   logo,
-  count,
   onCelebrate,
 }: {
   settings: Settings;
   logo: string;
-  count: number;
   onCelebrate: () => void;
 }) {
   const greg = useMemo(() => formatGregorian(settings.gregorianDate), [settings.gregorianDate]);
@@ -54,16 +53,19 @@ export const Header = memo(function Header({
         ) : null}
       </div>
 
-      {/* العدّاد وزر الاحتفال (يسار) */}
+      {/* رابط إرسال تهنئة وزر الاحتفال (يسار) */}
       <div className="flex items-center justify-center gap-3 lg:justify-self-end">
-        <div
-          className="flex items-center gap-2 rounded-full border border-line bg-paper px-5 py-2 font-cairo font-extrabold text-gold-deep shadow-sm"
-          aria-label="عدد التهاني المعتمدة"
+        <a
+          href="/congratulate"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('guest');
+          }}
+          className="flex items-center gap-2 rounded-full border border-line bg-paper px-5 py-2 font-cairo text-[1.1rem] font-extrabold text-gold-deep shadow-sm transition hover:bg-accent-soft active:scale-95"
         >
-          <Award className="float-soft h-6 w-6 text-gold" aria-hidden="true" />
-          <span className="text-[1.5rem] tabular-nums">{count}</span>
-          <span className="text-[1.05rem]">تهنئة مباركة</span>
-        </div>
+          <Send className="float-soft h-5 w-5 -scale-x-100 text-gold" aria-hidden="true" />
+          ارسل تهنئتك
+        </a>
         <button
           type="button"
           onClick={onCelebrate}

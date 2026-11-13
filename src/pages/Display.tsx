@@ -239,7 +239,7 @@ export default function Display() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, ease: 'easeOut' }}
         >
-          <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
+          <Header settings={settings} logo={logo} onCelebrate={manualCelebrate} />
         </motion.div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row max-lg:contents">
