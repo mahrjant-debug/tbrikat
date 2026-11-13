@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getCountFromServer,
   limit,
   onSnapshot,
   orderBy,
@@ -137,17 +136,6 @@ export function subscribePartners(cb: (list: Partner[]) => void): Unsubscribe {
       ),
     errCb('partners'),
   );
-}
-
-/** عدّاد تجميعي رخيص (لا يقرأ الوثائق نفسها) — مرة عند الفتح ومرة بعد كل إرسال */
-export async function countCongratulations(): Promise<number | null> {
-  try {
-    const snap = await getCountFromServer(collection(db, 'congratulations'));
-    return snap.data().count;
-  } catch (e) {
-    handleFirestoreError('count', e);
-    return null;
-  }
 }
 
 // ---------------- كتابة: الضيوف ----------------

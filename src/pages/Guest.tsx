@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { CheckCircle2, Clock, Loader2, MonitorPlay, PenLine, Send, ShieldCheck, Sparkles } from 'lucide-react';
-import { LogoMark } from '../components/Logo';
+import { CheckCircle2, Clock, Loader2, MonitorPlay, PenLine, Send, ShieldCheck } from 'lucide-react';
 import { Particles } from '../components/Particles';
 import { useBannedWords, useSettings } from '../hooks/useData';
 import { celebrateGuest } from '../lib/confetti';
 import { GUEST_COOLDOWN_MS, NAME_MAX, QUICK_PHRASES, TEXT_MAX } from '../lib/constants';
-import { countCongratulations, submitCongrat } from '../lib/db';
+import { submitCongrat } from '../lib/db';
 import { handleFirestoreError } from '../lib/firebase';
 import { navigate } from '../lib/router';
 import { safeStorage } from '../lib/storage';
@@ -29,7 +28,6 @@ export default function Guest() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
-  const [count, setCount] = useState<number | null>(null);
   const [wait, setWait] = useState(0); // ثوانٍ متبقية للمهلة
   const lastSentRef = useRef(Number(safeStorage.get(LAST_KEY) ?? 0) || 0);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -53,14 +51,6 @@ export default function Guest() {
   useEffect(() => {
     document.title = `أرسل تهنئتك — ${settings.names}`;
   }, [settings.names]);
-
-  useEffect(() => {
-    let alive = true;
-    countCongratulations().then((n) => alive && setCount(n));
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -101,7 +91,6 @@ export default function Guest() {
       setResult({ status, queued: out === 'timeout' });
       setText('');
       celebrateGuest();
-      countCongratulations().then((n) => n !== null && setCount(n));
     } catch (err) {
       handleFirestoreError('submit', err);
       setError('تعذّر إرسال التهنئة الآن. تحقق من الاتصال وحاول مرة أخرى.');
@@ -115,15 +104,8 @@ export default function Guest() {
       <Particles count={14} />
       <div className="relative z-10 mx-auto max-w-lg px-4 pt-6">
         <header className="mb-5 text-center">
-          <LogoMark className="mx-auto h-16 w-16" />
-          <h1 className="gold-text mt-1 font-amiri text-4xl font-bold leading-tight">{settings.names}</h1>
+          <h1 className="gold-text font-amiri text-4xl font-bold leading-tight">{settings.names}</h1>
           <p className="font-cairo text-base font-bold text-ink-soft">{settings.title}</p>
-          {count !== null ? (
-            <p className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full bg-accent-soft px-4 py-1.5 font-almarai text-sm font-bold text-accent">
-              <Sparkles size={16} aria-hidden="true" />
-              وصلت {count} تهنئة حتى الآن
-            </p>
-          ) : null}
         </header>
 
         {result ? (

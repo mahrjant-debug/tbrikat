@@ -57,7 +57,7 @@ npm run typecheck  # tsc --noEmit
 | `partners/{id}` | شركاء النجاح |
 | `bannedWords/{id}` | الكلمات المحظورة |
 
-- هواتف الضيوف تشترك في `settings/global` و`bannedWords` فقط ولا تقرأ التهاني. عدّاد «وصلت N تهنئة» في صفحة الضيف استعلام تجميعي (`getCountFromServer`) مرة عند الفتح ومرة بعد كل إرسال، ولا يحمّل أي وثيقة.
+- هواتف الضيوف تشترك في `settings/global` و`bannedWords` فقط ولا تقرأ التهاني.
 - الصور مخزّنة كنص Base64 داخل Firestore (لا Firebase Storage) لتبقى الحلول بلا خادم؛ لذلك الضغط التلقائي إلزامي.
 
 ## ملاحظات أمان
