@@ -4,7 +4,8 @@ import { Camera, ExternalLink, Maximize2 } from 'lucide-react';
 import { Modal } from '../ui';
 
 /** رمز QR دائم يفتح صفحة التهنئة بالنطاق الحالي، قابل للتكبير */
-export const QrBox = memo(function QrBox({ fill = false }: { fill?: boolean }) {
+/** compact: يوجد شركاء تحته، فيصغر الرمز قليلاً ويُخفى السطر الثانوي ليتسع صندوق الشركاء */
+export const QrBox = memo(function QrBox({ compact = false }: { compact?: boolean }) {
   const [src, setSrc] = useState('');
   const [open, setOpen] = useState(false);
   const url = `${window.location.origin}/congratulate`;
@@ -23,7 +24,7 @@ export const QrBox = memo(function QrBox({ fill = false }: { fill?: boolean }) {
     <>
       <section
         className={`card-surface relative flex flex-col items-center gap-[0.7rem] rounded-[1.6rem] p-[1.1rem] text-center ${
-          fill ? 'min-h-0 flex-1 justify-center' : ''
+          compact ? 'min-h-0 flex-1 gap-[0.5rem] overflow-hidden' : 'min-h-0 flex-1 justify-center'
         }`}
       >
         {/* زوايا ذهبية */}
@@ -41,14 +42,17 @@ export const QrBox = memo(function QrBox({ fill = false }: { fill?: boolean }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="تكبير رمز QR"
-          className="aspect-square w-full max-w-[14rem] overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-md transition hover:shadow-xl"
+          style={compact ? { width: 'min(12rem, 20dvh)' } : undefined}
+          className={`aspect-square overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-md transition hover:shadow-xl ${
+            compact ? '' : 'w-full max-w-[16.5rem]'
+          }`}
         >
           {src ? <img src={src} alt="رمز QR لصفحة التهنئة" className="h-full w-full" draggable={false} /> : null}
         </button>
 
         <div className="leading-snug">
           <div className="font-cairo text-[1.15rem] font-extrabold text-ink">وجّه كاميرا هاتفك للمسح</div>
-          <div className="font-almarai text-[0.85rem] text-ink-soft">مخصص للالتقاط السريع من بعيد</div>
+          {compact ? null : <div className="font-almarai text-[0.85rem] text-ink-soft">مخصص للالتقاط السريع من بعيد</div>}
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2">

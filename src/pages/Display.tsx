@@ -242,8 +242,8 @@ export default function Display() {
             </AnimatePresence>
           </main>
 
-          <aside className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[21rem]">
-            <QrBox fill={!(settings.showPartners && partners.length > 0)} />
+          <aside className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[26rem]">
+            <QrBox compact={settings.showPartners && partners.length > 0} />
             {settings.showPartners ? <PartnersBox partners={partners} /> : null}
           </aside>
         </div>
