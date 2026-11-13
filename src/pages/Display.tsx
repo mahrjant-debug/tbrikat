@@ -223,7 +223,7 @@ export default function Display() {
 
       <Navbar autoHide />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full flex-col gap-[1.2rem] p-[1.4rem] lg:h-full lg:min-h-0 lg:w-[85%] lg:px-0">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full flex-col gap-[1.2rem] p-[1.4rem] lg:h-full lg:min-h-0 lg:w-[87%] lg:px-0">
         <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
 
         <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row">
