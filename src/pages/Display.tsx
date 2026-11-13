@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { Particles } from '../components/Particles';
 import { Navbar } from '../components/Navbar';
@@ -26,7 +26,9 @@ export default function Display() {
   const { settings, loaded } = useSettings();
   const logo = useAsset('logo');
   const customBg = useAsset('background');
-  const photos = usePhotos();
+  const allPhotos = usePhotos();
+  // صور بلا بيانات (من نظام قديم) لا تُعرض
+  const photos = useMemo(() => allPhotos.filter((p) => p.dataUrl.startsWith('data:')), [allPhotos]);
   const partners = usePartners();
   const prefs = usePrefs();
 

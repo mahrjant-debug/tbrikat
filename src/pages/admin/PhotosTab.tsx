@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowRight, ArrowLeft, ImagePlus, Loader2, Play, Trash2 } from 'lucide-react';
 import { Button, ConfirmDialog, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
-import { addPhoto, deletePhoto, swapOrder, triggerSpotlight } from '../../lib/db';
+import { addPhoto, deleteAllPhotos, deletePhoto, swapOrder, triggerSpotlight } from '../../lib/db';
 import { handleFirestoreError } from '../../lib/firebase';
 import { PHOTO_OPTS, compressImage } from '../../lib/image';
 import type { Photo } from '../../lib/types';
@@ -16,6 +16,7 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Photo | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -82,6 +83,9 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
         <Button variant="soft" disabled={!photos.length} onClick={() => void spotlight('')}>
           <Play size={16} /> تسليط الضوء الآن (صورة تالية)
         </Button>
+        <Button variant="danger" disabled={!photos.length} onClick={() => setConfirmAll(true)}>
+          <Trash2 size={16} /> حذف الكل ({photos.length})
+        </Button>
         <p className="text-xs text-ink-soft">تُضغط الصور تلقائياً (JPEG، أقصى بُعد 1200px، أقل من 180KB).</p>
       </div>
 
@@ -91,7 +95,13 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {photos.map((p, i) => (
             <li key={p.id} className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-              <img src={p.dataUrl} alt={`صورة ${i + 1}`} className="aspect-square w-full object-cover" />
+              {p.dataUrl ? (
+                <img src={p.dataUrl} alt={`صورة ${i + 1}`} className="aspect-square w-full object-cover" />
+              ) : (
+                <div className="flex aspect-square w-full items-center justify-center bg-gray-100 px-2 text-center text-xs font-bold text-ink-soft">
+                  صورة بلا بيانات (من نظام قديم)
+                </div>
+              )}
               <div className="flex items-center justify-between gap-1 p-2">
                 <span className="text-xs text-ink-soft tabular-nums">{kb(p.dataUrl)} KB</span>
                 <div className="flex items-center">
@@ -130,6 +140,23 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
           } catch (e) {
             handleFirestoreError('photo-delete', e);
             toast.error('تعذّر الحذف.');
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={confirmAll}
+        title="حذف كل الصور"
+        message={`سيتم حذف ${photos.length} صورة نهائياً من شريط الصور، ولا يمكن التراجع عن ذلك.`}
+        confirmLabel="حذف الكل نهائياً"
+        onCancel={() => setConfirmAll(false)}
+        onConfirm={async () => {
+          setConfirmAll(false);
+          try {
+            await deleteAllPhotos(photos.map((p) => p.id));
+            toast.success('تم حذف كل الصور');
+          } catch (e) {
+            handleFirestoreError('photos-delete-all', e);
+            toast.error('تعذّر حذف الصور.');
           }
         }}
       />

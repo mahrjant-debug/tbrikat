@@ -231,6 +231,15 @@ export async function deletePhoto(id: string): Promise<void> {
   await deleteDoc(doc(db, 'photos', id));
 }
 
+/** حذف كل الصور على دفعات من 400 */
+export async function deleteAllPhotos(ids: string[]): Promise<void> {
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const id of ids.slice(i, i + 400)) batch.delete(doc(db, 'photos', id));
+    await batch.commit();
+  }
+}
+
 export async function swapOrder(
   coll: 'photos' | 'partners',
   a: { id: string; order: number },
