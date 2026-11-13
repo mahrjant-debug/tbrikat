@@ -5,7 +5,7 @@ import { Modal } from '../ui';
 
 /** رمز QR دائم يفتح صفحة التهنئة بالنطاق الحالي، قابل للتكبير */
 /** compact: يوجد شركاء تحته، فيصغر الرمز قليلاً ويُخفى السطر الثانوي ليتسع صندوق الشركاء */
-export const QrBox = memo(function QrBox({ compact = false }: { compact?: boolean }) {
+export const QrBox = memo(function QrBox({ compact = false, className = "" }: { compact?: boolean; className?: string }) {
   const [src, setSrc] = useState('');
   const [open, setOpen] = useState(false);
   const url = `${window.location.origin}/congratulate`;
@@ -25,7 +25,7 @@ export const QrBox = memo(function QrBox({ compact = false }: { compact?: boolea
       <section
         className={`card-surface relative flex flex-col items-center gap-[0.7rem] rounded-[1.6rem] p-[1.1rem] text-center ${
           compact ? 'min-h-0 flex-1 gap-[0.5rem] overflow-hidden' : 'min-h-0 flex-1 justify-center'
-        }`}
+        } ${className}`}
       >
         {/* زوايا ذهبية */}
         <span className="pointer-events-none absolute -left-[0.4rem] -top-[0.4rem] h-6 w-6 rounded-tl-xl border-l-[0.2rem] border-t-[0.2rem] border-gold" aria-hidden="true" />

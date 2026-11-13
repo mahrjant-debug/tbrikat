@@ -5,7 +5,7 @@ import { PARTNERS_ROTATE_MS } from '../../lib/constants';
 import type { Partner } from '../../lib/types';
 
 /** «شركاء النجاح»: شريك واحد في كل عرض بشعار كبير واسم كامل، يتبدلون كل 5 ثوانٍ */
-export const PartnersBox = memo(function PartnersBox({ partners }: { partners: Partner[] }) {
+export const PartnersBox = memo(function PartnersBox({ partners, className = "" }: { partners: Partner[]; className?: string }) {
   const [page, setPage] = useState(0);
   const pages = Math.max(1, partners.length);
 
@@ -20,7 +20,7 @@ export const PartnersBox = memo(function PartnersBox({ partners }: { partners: P
   const view = partners.slice(safePage, safePage + 1);
 
   return (
-    <section className="card-surface flex shrink-0 flex-col rounded-[1.6rem] p-[1rem]" aria-label="شركاء النجاح">
+    <section className={`card-surface flex shrink-0 flex-col rounded-[1.6rem] p-[1rem] ${className}`} aria-label="شركاء النجاح">
       <h2 className="mb-2 flex items-center justify-center gap-2 font-cairo text-[1.15rem] font-extrabold text-accent">
         <Handshake className="h-5 w-5" aria-hidden="true" />
         شركاء النجاح

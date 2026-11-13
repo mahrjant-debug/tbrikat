@@ -234,7 +234,7 @@ export default function Display() {
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full flex-col gap-[1.2rem] p-[1.4rem] lg:h-full lg:min-h-0 lg:w-[87%] lg:px-0">
         <motion.div
-          className="shrink-0"
+          className="shrink-0 max-lg:order-1"
           initial={{ opacity: 0, y: -36 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, ease: 'easeOut' }}
@@ -242,9 +242,9 @@ export default function Display() {
           <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
         </motion.div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row max-lg:contents">
           <motion.main
-            className="relative min-h-[28rem] min-w-0 flex-1 lg:min-h-0"
+            className="relative max-lg:order-2 min-h-[28rem] min-w-0 flex-1 lg:min-h-0"
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.15, ease: 'easeOut' }}
@@ -264,19 +264,19 @@ export default function Display() {
           </motion.main>
 
           <motion.aside
-            className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[26rem]"
+            className="flex w-full shrink-0 flex-col gap-[1.2rem] max-lg:contents lg:min-h-0 lg:w-[26rem]"
             initial={{ opacity: 0, x: -48 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
           >
-            <QrBox compact={settings.showPartners && partners.length > 0} />
-            {settings.showPartners ? <PartnersBox partners={partners} /> : null}
+            <QrBox className="max-lg:order-5" compact={settings.showPartners && partners.length > 0} />
+            {settings.showPartners ? <PartnersBox className="max-lg:order-4" partners={partners} /> : null}
           </motion.aside>
         </div>
 
         {photos.length ? (
           <motion.div
-            className="shrink-0"
+            className="shrink-0 max-lg:order-3"
             initial={{ opacity: 0, y: 48 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.45, ease: 'easeOut' }}
