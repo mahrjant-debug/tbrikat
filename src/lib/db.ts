@@ -224,8 +224,8 @@ export async function deleteBannedWord(id: string): Promise<void> {
   await deleteDoc(doc(db, 'bannedWords', id));
 }
 
-export async function addPhoto(dataUrl: string, order: number): Promise<void> {
-  await addDoc(collection(db, 'photos'), { dataUrl, order, createdAt: serverTimestamp() });
+export async function addPhoto(dataUrl: string, order: number, name = ''): Promise<void> {
+  await addDoc(collection(db, 'photos'), { dataUrl, name, order, createdAt: serverTimestamp() });
 }
 
 export async function updatePhotoName(id: string, name: string): Promise<void> {

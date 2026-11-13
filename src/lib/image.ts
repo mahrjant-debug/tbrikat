@@ -63,3 +63,17 @@ export async function compressImage(file: File, opts: CompressOptions): Promise<
 export const PHOTO_OPTS: CompressOptions = { maxDim: 1200, maxBytes: 180 * 1024, format: 'jpeg' };
 export const BACKGROUND_OPTS: CompressOptions = { maxDim: 1600, maxBytes: 300 * 1024, format: 'jpeg' };
 export const LOGO_OPTS: CompressOptions = { maxDim: 360, maxBytes: 90 * 1024, format: 'png' };
+
+/**
+ * يستخرج اسم صاحب الصورة من اسم الملف المرفوع (مثل «محمد أحمد المحمد.jpg» → «محمد أحمد المحمد»).
+ * أسماء الكاميرا العامة (IMG_1234 ونحوها) والأرقام فقط لا تُعدّ أسماء فتُترك فارغة.
+ */
+export function nameFromFileName(fileName: string): string {
+  let s = fileName.replace(/\.[^.]+$/, ''); // إزالة الامتداد
+  s = s.replace(/[_.-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\(\d+\)$/, '').replace(/^\d+\s*/, '').trim(); // لاحقة (1) أو ترقيم في البداية
+  if (!/\p{L}/u.test(s)) return '';
+  const isArabic = /\p{Script=Arabic}/u.test(s);
+  if (!isArabic && /^(img|dsc|dscn|dscf|image|photo|pic|picture|screenshot|whatsapp|wa|mvimg|pxl|untitled)(?![\p{L}])/iu.test(s)) return '';
+  return s.slice(0, 50);
+}

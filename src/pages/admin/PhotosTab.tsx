@@ -4,7 +4,7 @@ import { Button, ConfirmDialog, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
 import { addPhoto, deleteAllPhotos, deletePhoto, swapOrder, triggerSpotlight, updatePhotoName } from '../../lib/db';
 import { handleFirestoreError } from '../../lib/firebase';
-import { PHOTO_OPTS, compressImage } from '../../lib/image';
+import { PHOTO_OPTS, compressImage, nameFromFileName } from '../../lib/image';
 import type { Photo } from '../../lib/types';
 
 function kb(dataUrl: string): number {
@@ -27,7 +27,7 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
       try {
         const dataUrl = await compressImage(file, PHOTO_OPTS);
         order += 1;
-        await addPhoto(dataUrl, order);
+        await addPhoto(dataUrl, order, nameFromFileName(file.name));
         ok += 1;
       } catch (e) {
         handleFirestoreError('photo-add', e);
@@ -86,7 +86,7 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
         <Button variant="danger" disabled={!photos.length} onClick={() => setConfirmAll(true)}>
           <Trash2 size={16} /> حذف الكل ({photos.length})
         </Button>
-        <p className="text-xs text-ink-soft">تُضغط الصور تلقائياً (JPEG، أقصى بُعد 1200px، أقل من 180KB).</p>
+        <p className="text-xs text-ink-soft">تُضغط الصور تلقائياً (JPEG، أقصى بُعد 1200px، أقل من 180KB). يُؤخذ اسم صاحب الصورة تلقائياً من اسم الملف (مثل «محمد أحمد المحمد.jpg») ويمكنك تعديله تحت الصورة.</p>
       </div>
 
       {photos.length === 0 ? (
