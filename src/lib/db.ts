@@ -109,6 +109,7 @@ export function subscribePhotos(cb: (list: Photo[]) => void): Unsubscribe {
           return {
             id: d.id,
             dataUrl: String(x.dataUrl ?? ''),
+            name: String(x.name ?? ''),
             order: typeof x.order === 'number' ? x.order : 0,
             createdAt: toMs(x.createdAt),
           };
@@ -225,6 +226,10 @@ export async function deleteBannedWord(id: string): Promise<void> {
 
 export async function addPhoto(dataUrl: string, order: number): Promise<void> {
   await addDoc(collection(db, 'photos'), { dataUrl, order, createdAt: serverTimestamp() });
+}
+
+export async function updatePhotoName(id: string, name: string): Promise<void> {
+  await updateDoc(doc(db, 'photos', id), { name });
 }
 
 export async function deletePhoto(id: string): Promise<void> {

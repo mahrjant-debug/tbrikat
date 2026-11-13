@@ -28,6 +28,10 @@ export interface SpotlightSettings {
 }
 
 export interface Settings {
+  /** عنوان الجدارة في وسط الترويسة */
+  wallTitle: string;
+  /** وصف الصور تحت كل صورة (مثل «العريس») */
+  photoLabel: string;
   title: string;
   names: string;
   gregorianDate: string; // YYYY-MM-DD
@@ -57,6 +61,8 @@ export interface Settings {
 export interface Photo {
   id: string;
   dataUrl: string;
+  /** اسم صاحب الصورة (يظهر تحتها) */
+  name: string;
   order: number;
   createdAt: number;
 }

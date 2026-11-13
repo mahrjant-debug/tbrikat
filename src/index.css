@@ -20,21 +20,21 @@
 /* ---------- الثيمات الأربعة ---------- */
 :root,
 [data-theme='royal'] {
-  --paper: #fffdf8;
-  --ink: #3a2a10;
-  --ink-soft: #7a6540;
-  --accent: #8a5f12;
-  --accent-soft: #f6ecd2;
-  --gold: #c99a3b;
-  --gold-deep: #9a6f1a;
-  --gold-soft: #ecd9a4;
-  --line: #e6d6a8;
-  --bg-1: #fffdf6;
-  --bg-2: #f8efd6;
-  --bg-3: #efdcaa;
-  --glow: rgba(201, 154, 59, 0.45);
-  --confetti-1: #c99a3b;
-  --confetti-2: #f3d98b;
+  --paper: #fffdf7;
+  --ink: #3b2408;
+  --ink-soft: #8a6a3b;
+  --accent: #b45309;
+  --accent-soft: #fef3c7;
+  --gold: #f0a020;
+  --gold-deep: #a8610c;
+  --gold-soft: #fbd98a;
+  --line: #f1dba5;
+  --bg-1: #fffcf0;
+  --bg-2: #fdf1cf;
+  --bg-3: #fbe2a0;
+  --glow: rgba(240, 160, 32, 0.4);
+  --confetti-1: #f0a020;
+  --confetti-2: #fbd98a;
   --confetti-3: #fff4cf;
 }
 [data-theme='emerald'] {
@@ -231,4 +231,37 @@ button:disabled {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--gold-soft) transparent;
+}
+
+/* ---------- سطح البطاقات (التصميم الجديد) ---------- */
+.card-surface {
+  background: linear-gradient(180deg, #ffffff 0%, var(--paper) 100%);
+  border: 0.12rem solid var(--gold-soft);
+  box-shadow: 0 1rem 2.6rem -1.2rem var(--glow);
+}
+.gold-title {
+  background: linear-gradient(100deg, var(--gold-deep), #7a4a0a 45%, var(--gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.photo-frame {
+  padding: 0.28rem;
+  border-radius: 1.1rem;
+  background: linear-gradient(135deg, #fde68a, var(--gold) 50%, #fcd34d);
+  box-shadow: 0 0.4rem 1rem -0.4rem var(--glow);
+}
+
+/* شريط تقدم زمن البطاقة: يمتلئ من اليمين (بداية RTL) */
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.bar-fill {
+  transform-origin: right center;
+  animation: bar-fill 10s linear forwards;
 }

@@ -16,7 +16,8 @@ import { onBus } from '../lib/channel';
 import { hasCelebrated, markCelebrated } from '../lib/celebrated';
 import { FINALE_MS } from '../lib/constants';
 import { usePrefs } from '../lib/prefs';
-import { unlockAudio } from '../lib/sound';
+import { celebrateBurst } from '../lib/confetti';
+import { playCelebration, unlockAudio } from '../lib/sound';
 import type { Congrat, Photo } from '../lib/types';
 
 type Phase = 'normal' | 'countdown' | 'finale';
@@ -158,8 +159,8 @@ export default function Display() {
   }, []);
 
   useEffect(() => {
-    document.title = `${settings.names} — جدارية التهاني`;
-  }, [settings.names]);
+    document.title = `${settings.names} — ${settings.wallTitle}`;
+  }, [settings.names, settings.wallTitle]);
 
   useEffect(() => {
     const on = () => unlockAudio();
@@ -192,6 +193,11 @@ export default function Display() {
   }, []);
 
   const sound = settings.soundEnabled && !prefs.muted;
+  const manualCelebrate = useCallback(() => {
+    unlockAudio();
+    celebrateBurst();
+    if (sound) playCelebration();
+  }, [sound]);
   const preset = getPreset(settings.backgroundPreset);
   const bgImage = settings.backgroundMode === 'custom' ? (customBg ? `url("${customBg}")` : '') : preset.image;
   const bgCover = settings.backgroundMode === 'custom';
@@ -218,9 +224,9 @@ export default function Display() {
       <Navbar autoHide />
 
       <div className="relative z-10 flex min-h-dvh flex-col gap-[1.2rem] p-[1.4rem] lg:h-full lg:min-h-0">
-        <Header settings={settings} logo={logo} count={cards.length} />
+        <Header settings={settings} logo={logo} count={cards.length} onCelebrate={manualCelebrate} />
 
-        <div className="flex min-h-0 flex-1 flex-col gap-[1.2rem] lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-[1.6rem] lg:flex-row">
           <main className="relative min-h-[28rem] min-w-0 flex-1 lg:min-h-0">
             {phase === 'countdown' ? (
               <CountdownPanel title={cdTitle} target={cdTarget} />
@@ -236,13 +242,13 @@ export default function Display() {
             </AnimatePresence>
           </main>
 
-          <aside className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:w-[21rem]">
-            <QrBox />
+          <aside className="flex w-full shrink-0 flex-col gap-[1.2rem] lg:min-h-0 lg:w-[21rem]">
+            <QrBox fill={!(settings.showPartners && partners.length > 0)} />
             {settings.showPartners ? <PartnersBox partners={partners} /> : null}
           </aside>
         </div>
 
-        <PhotoStrip photos={photos} speed={settings.stripSpeed} />
+        <PhotoStrip photos={photos} speed={settings.stripSpeed} label={settings.photoLabel} />
       </div>
 
       <AnimatePresence>

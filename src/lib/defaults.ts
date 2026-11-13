@@ -1,6 +1,8 @@
 import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
+  wallTitle: 'جدارية التهاني والتبريكات',
+  photoLabel: 'العريس',
   title: 'حفل الزواج الجماعي',
   names: 'مبروك للعرسان',
   gregorianDate: '',
@@ -44,6 +46,8 @@ export function normalizeSettings(raw: Record<string, unknown> | undefined): Set
   const sp = (raw.spotlight ?? {}) as Record<string, unknown>;
   const theme = raw.theme;
   return {
+    wallTitle: str(raw.wallTitle, d.wallTitle),
+    photoLabel: str(raw.photoLabel, d.photoLabel),
     title: str(raw.title, d.title),
     names: str(raw.names, d.names),
     gregorianDate: str(raw.gregorianDate, d.gregorianDate),

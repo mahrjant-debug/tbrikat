@@ -20,6 +20,27 @@ export function cardDuration(card: Congrat, base: number, adaptive: boolean): nu
   return base + Math.min(20, extraWords * 0.45);
 }
 
+/** نقاط الترقيم: حتى 7 نقاط حول البطاقة الحالية */
+function Dots({ index, total }: { index: number; total: number }) {
+  const max = 7;
+  const start = Math.max(0, Math.min(index - Math.floor(max / 2), total - max));
+  const end = Math.min(total, start + max);
+  const items = Array.from({ length: end - start }, (_, k) => start + k);
+  return (
+    <div className="flex items-center justify-center gap-2" aria-hidden="true">
+      {items.map((i) => (
+        <span
+          key={i}
+          className={`h-2.5 rounded-full transition-all duration-300 ${i === index ? 'w-9 bg-orange-400' : 'w-2.5 bg-line'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+const arrowCls =
+  'absolute top-1/2 z-20 flex h-[2.8rem] w-[2.8rem] -translate-y-1/2 items-center justify-center rounded-full border border-line bg-white text-gold-deep shadow-md transition hover:scale-105 hover:bg-accent-soft';
+
 export const CardStage = memo(function CardStage({ cards, baseDuration, adaptive }: Props) {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const cardsRef = useRef(cards);
@@ -69,48 +90,46 @@ export const CardStage = memo(function CardStage({ cards, baseDuration, adaptive
 
   if (!current) {
     return (
-      <div className="gold-frame mx-auto flex h-full w-full max-w-[72rem] flex-col items-center justify-center rounded-[2rem] px-8 text-center">
+      <div className="card-surface flex h-full w-full flex-col items-center justify-center rounded-[1.8rem] px-8 text-center">
         <Heart className="mb-5 h-16 w-16 text-gold" aria-hidden="true" />
-        <p className="gold-text font-amiri text-[3.6rem] font-bold leading-snug">كن أول من يبارك للعرسان!</p>
+        <p className="gold-text font-cairo text-[3.4rem] font-extrabold leading-snug">كن أول من يبارك للعرسان!</p>
         <p className="mt-4 font-cairo text-[1.5rem] text-ink-soft">امسح رمز QR وأرسل تهنئتك الآن</p>
       </div>
     );
   }
 
+  const multi = cards.length > 1;
   return (
-    <div className="group relative h-full">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={current.id}
-          className="h-full"
-          initial={{ opacity: 0, scale: 0.96, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 1.02, y: -12 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-        >
-          <CongratCard card={current} />
-        </motion.div>
-      </AnimatePresence>
-      {cards.length > 1 ? (
-        <>
-          <button
-            type="button"
-            aria-label="التهنئة التالية"
-            onClick={() => step(1)}
-            className="absolute end-2 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-accent opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100"
+    <div className="flex h-full min-h-0 flex-col gap-[0.9rem]">
+      <div className="relative min-h-0 flex-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.id}
+            className="h-full"
+            initial={{ opacity: 0, scale: 0.97, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.01, y: -10 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
           >
-            <ChevronLeft size={26} />
-          </button>
-          <button
-            type="button"
-            aria-label="التهنئة السابقة"
-            onClick={() => step(-1)}
-            className="absolute start-2 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-accent opacity-0 shadow-lg transition group-hover:opacity-100 focus:opacity-100"
-          >
-            <ChevronRight size={26} />
-          </button>
-        </>
-      ) : null}
+            <CongratCard
+              card={current}
+              position={{ index: index + 1, total: cards.length }}
+              durationSec={multi ? duration : undefined}
+            />
+          </motion.div>
+        </AnimatePresence>
+        {multi ? (
+          <>
+            <button type="button" aria-label="التهنئة التالية" onClick={() => step(1)} className={`${arrowCls} left-0 -translate-x-1/2`}>
+              <ChevronLeft size={24} />
+            </button>
+            <button type="button" aria-label="التهنئة السابقة" onClick={() => step(-1)} className={`${arrowCls} right-0 translate-x-1/2`}>
+              <ChevronRight size={24} />
+            </button>
+          </>
+        ) : null}
+      </div>
+      {multi ? <Dots index={index} total={cards.length} /> : null}
     </div>
   );
 });

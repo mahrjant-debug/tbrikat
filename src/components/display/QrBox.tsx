@@ -1,10 +1,10 @@
 import { memo, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Maximize2, Smartphone } from 'lucide-react';
+import { Camera, ExternalLink, Maximize2 } from 'lucide-react';
 import { Modal } from '../ui';
 
 /** رمز QR دائم يفتح صفحة التهنئة بالنطاق الحالي، قابل للتكبير */
-export const QrBox = memo(function QrBox() {
+export const QrBox = memo(function QrBox({ fill = false }: { fill?: boolean }) {
   const [src, setSrc] = useState('');
   const [open, setOpen] = useState(false);
   const url = `${window.location.origin}/congratulate`;
@@ -21,24 +21,56 @@ export const QrBox = memo(function QrBox() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="glass group flex w-full flex-col items-center gap-2 rounded-[1.4rem] p-3 text-center transition hover:shadow-xl"
-        aria-label="تكبير رمز QR"
+      <section
+        className={`card-surface relative flex flex-col items-center gap-[0.7rem] rounded-[1.6rem] p-[1.1rem] text-center ${
+          fill ? 'min-h-0 flex-1 justify-center' : ''
+        }`}
       >
-        <div className="flex items-center gap-2 font-cairo text-[1.15rem] font-extrabold text-accent">
-          <Smartphone className="h-5 w-5" aria-hidden="true" />
-          بارك للعرسان من هاتفك
-        </div>
-        <div className="relative aspect-square w-full max-w-[15rem] overflow-hidden rounded-xl bg-white p-2 shadow-inner">
+        {/* زوايا ذهبية */}
+        <span className="pointer-events-none absolute -left-[0.4rem] -top-[0.4rem] h-6 w-6 rounded-tl-xl border-l-[0.2rem] border-t-[0.2rem] border-gold" aria-hidden="true" />
+        <span className="pointer-events-none absolute -right-[0.4rem] -top-[0.4rem] h-6 w-6 rounded-tr-xl border-r-[0.2rem] border-t-[0.2rem] border-gold" aria-hidden="true" />
+        <span className="pointer-events-none absolute -bottom-[0.4rem] -left-[0.4rem] h-6 w-6 rounded-bl-xl border-b-[0.2rem] border-l-[0.2rem] border-gold" aria-hidden="true" />
+        <span className="pointer-events-none absolute -bottom-[0.4rem] -right-[0.4rem] h-6 w-6 rounded-br-xl border-b-[0.2rem] border-r-[0.2rem] border-gold" aria-hidden="true" />
+
+        <span className="flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-1 font-cairo text-[1rem] font-extrabold text-gold-deep">
+          <Camera className="h-4 w-4" aria-hidden="true" />
+          امسح الباركود للتهنئة
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="تكبير رمز QR"
+          className="aspect-square w-full max-w-[14rem] overflow-hidden rounded-2xl border border-line bg-white p-2 shadow-md transition hover:shadow-xl"
+        >
           {src ? <img src={src} alt="رمز QR لصفحة التهنئة" className="h-full w-full" draggable={false} /> : null}
-          <span className="absolute bottom-1.5 start-1.5 rounded-full bg-paper/90 p-1 text-ink-soft opacity-0 transition group-hover:opacity-100">
-            <Maximize2 size={14} />
-          </span>
+        </button>
+
+        <div className="leading-snug">
+          <div className="font-cairo text-[1.15rem] font-extrabold text-ink">وجّه كاميرا هاتفك للمسح</div>
+          <div className="font-almarai text-[0.85rem] text-ink-soft">مخصص للالتقاط السريع من بعيد</div>
         </div>
-        <div className="font-almarai text-[0.95rem] text-ink-soft">امسح الرمز لإرسال تهنئتك</div>
-      </button>
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="/congratulate"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 font-almarai text-[0.95rem] font-bold text-gold-deep underline underline-offset-4"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            فتح صفحة التهنئة
+          </a>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 font-almarai text-[0.95rem] font-bold text-gold-deep transition hover:bg-accent-soft"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+            تكبير الباركود
+          </button>
+        </div>
+      </section>
       <Modal open={open} onClose={() => setOpen(false)} title="امسح الرمز للتهنئة">
         <div className="flex flex-col items-center gap-3">
           {src ? <img src={src} alt="رمز QR مكبّر" className="aspect-square w-full max-w-[26rem] rounded-xl bg-white p-3" /> : null}

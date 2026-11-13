@@ -93,10 +93,16 @@ export function SettingsTab({
   return (
     <section className="space-y-4 pb-24">
       <Section title="بيانات الحفل">
-        <Field label="العنوان">
+        <Field label="عنوان الجدارية (وسط الترويسة)">
+          <input className={inputCls} value={draft.wallTitle} maxLength={60} onChange={(e) => set('wallTitle', e.target.value)} />
+        </Field>
+        <Field label="وصف الصور (يظهر تحت كل صورة)" hint="مثل: العريس، العروس، الراعي">
+          <input className={inputCls} value={draft.photoLabel} maxLength={30} onChange={(e) => set('photoLabel', e.target.value)} />
+        </Field>
+        <Field label="العنوان الفرعي">
           <input className={inputCls} value={draft.title} maxLength={80} onChange={(e) => set('title', e.target.value)} />
         </Field>
-        <Field label="اسما العريسين أو اسم المهرجان">
+        <Field label="اسم المهرجان أو العريسين (بجانب الشعار)">
           <input className={inputCls} value={draft.names} maxLength={80} onChange={(e) => set('names', e.target.value)} />
         </Field>
         <Field label="التاريخ الميلادي" hint="يُعرض معه اسم اليوم بالعربية">

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowRight, ArrowLeft, ImagePlus, Loader2, Play, Trash2 } from 'lucide-react';
 import { Button, ConfirmDialog, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
-import { addPhoto, deleteAllPhotos, deletePhoto, swapOrder, triggerSpotlight } from '../../lib/db';
+import { addPhoto, deleteAllPhotos, deletePhoto, swapOrder, triggerSpotlight, updatePhotoName } from '../../lib/db';
 import { handleFirestoreError } from '../../lib/firebase';
 import { PHOTO_OPTS, compressImage } from '../../lib/image';
 import type { Photo } from '../../lib/types';
@@ -102,6 +102,24 @@ export function PhotosTab({ photos }: { photos: Photo[] }) {
                   صورة بلا بيانات (من نظام قديم)
                 </div>
               )}
+              <input
+                key={`${p.id}:${p.name}`}
+                defaultValue={p.name}
+                maxLength={50}
+                placeholder="اسم صاحب الصورة"
+                aria-label={`اسم صاحب الصورة ${i + 1}`}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== p.name) {
+                    updatePhotoName(p.id, v).catch((err) => {
+                      handleFirestoreError('photo-name', err);
+                      toast.error('تعذّر حفظ الاسم.');
+                    });
+                  }
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="w-full border-0 border-b border-line bg-transparent px-2 py-1.5 text-center text-sm font-bold text-ink outline-none placeholder:font-normal placeholder:text-ink-soft/60 focus:bg-accent-soft"
+              />
               <div className="flex items-center justify-between gap-1 p-2">
                 <span className="text-xs text-ink-soft tabular-nums">{kb(p.dataUrl)} KB</span>
                 <div className="flex items-center">
