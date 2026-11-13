@@ -535,3 +535,30 @@ button:disabled {
     animation: none;
   }
 }
+
+/* نبض كلمة «تهنئة» (نبضة مزدوجة كالقلب) مع حلقة تتسع حول النقطة */
+@keyframes beat-text {
+  0%, 60%, 100% { transform: scale(1); text-shadow: 0 0 0 rgba(240, 160, 32, 0); }
+  12% { transform: scale(1.2); text-shadow: 0 0 0.6em rgba(240, 160, 32, 0.75); }
+  24% { transform: scale(1); text-shadow: 0 0 0 rgba(240, 160, 32, 0); }
+  36% { transform: scale(1.12); text-shadow: 0 0 0.45em rgba(240, 160, 32, 0.55); }
+}
+@keyframes beat-dot {
+  0%, 60%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(240, 160, 32, 0.6); }
+  12% { transform: scale(1.5); box-shadow: 0 0 0 0.55rem rgba(240, 160, 32, 0); }
+  24% { transform: scale(1); box-shadow: 0 0 0 0 rgba(240, 160, 32, 0); }
+}
+.beat-text {
+  display: inline-block;
+  transform-origin: right center;
+  animation: beat-text 1.8s ease-in-out infinite;
+}
+.beat-dot {
+  animation: beat-dot 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .beat-text,
+  .beat-dot {
+    animation: none;
+  }
+}

@@ -43,8 +43,8 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
 
       <div className="flex shrink-0 items-center justify-between px-[3%] pt-[1.1rem]">
         <span className="flex items-center gap-2 font-cairo text-[1.15rem] font-extrabold text-gold-deep">
-          <span className="h-3 w-3 rounded-full bg-gold/70" aria-hidden="true" />
-          تهنئة
+          <span className="beat-dot h-3 w-3 rounded-full bg-gold" aria-hidden="true" />
+          <span className="beat-text">تهنئة</span>
         </span>
         {position ? (
           <span
