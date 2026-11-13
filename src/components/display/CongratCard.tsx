@@ -3,20 +3,8 @@ import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 import type { Congrat } from '../../lib/types';
 
-const BLESSINGS = [
-  'دامت دياركم عامرة بالافراح والمسرات',
-  'بارك الله لكما وبارك عليكما وجمع بينكما في خير',
-  'ألف مبروك، وعقبى لكل شاب وشابة',
-  'جعله الله زواجاً ميموناً وحياةً سعيدة',
-  'أسعد الله أيامكم وأدام أفراحكم',
-];
-
-function hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-
+/** عبارة الدعاء الثابتة في كل البطاقات */
+const BLESSING = 'دامت دياركم عامرة بالافراح والمسرات';
 function textSize(len: number): string {
   if (len <= 40) return 'text-[3.4rem] leading-[1.55]';
   if (len <= 90) return 'text-[2.9rem] leading-[1.6]';
@@ -41,7 +29,6 @@ interface Props {
 
 /** بطاقة التهنئة الكبيرة */
 export const CongratCard = memo(function CongratCard({ card, position, durationSec, badge }: Props) {
-  const blessing = BLESSINGS[hash(card.id) % BLESSINGS.length];
   // ظهور الكلمات تباعاً (بحد أقصى ~1.2 ثانية للنصوص الطويلة)
   const words = card.text.split(/\s+/).filter(Boolean);
   const step = Math.min(0.07, 1.2 / Math.max(words.length, 1));
@@ -107,7 +94,7 @@ export const CongratCard = memo(function CongratCard({ card, position, durationS
         </div>
         <div className="flex min-w-0 items-center gap-2 font-almarai text-[1.2rem] font-bold text-ink-soft">
           <Sparkles className="twinkle h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
-          <span className="lg:truncate">{blessing}</span>
+          <span className="lg:truncate">{BLESSING}</span>
         </div>
       </div>
 
