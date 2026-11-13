@@ -37,7 +37,7 @@ export const PhotoStrip = memo(function PhotoStrip({
             {label || p.name ? (
               <figcaption className="mt-[0.35rem] leading-tight">
                 {label ? <div className="font-almarai text-[1.05rem] font-bold text-ink-soft">{label}</div> : null}
-                {p.name ? <div className="truncate font-cairo text-[1.55rem] font-extrabold text-ink">{p.name}</div> : null}
+                {p.name ? <div className="truncate font-cairo text-[1.3rem] font-extrabold text-ink">{p.name}</div> : null}
               </figcaption>
             ) : null}
           </figure>
