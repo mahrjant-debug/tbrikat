@@ -291,7 +291,9 @@ export default function Display() {
           <Spotlight
             key={spot.key}
             src={spot.photo.dataUrl}
-            names={settings.names}
+            name={spot.photo.name}
+            label={settings.photoLabel}
+            festival={settings.names}
             durationSec={durationSec}
             sound={sound}
             onDone={() => setSpot(null)}
