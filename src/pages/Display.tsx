@@ -545,7 +545,7 @@ export default function Display() {
 
       <AnimatePresence>
         {video && phase === 'normal' ? (
-          <VideoOverlay key={video.key} video={video.video} muted={prefs.muted} maxSec={video.video.durationSec > 0 ? video.video.durationSec : videoCfg.maxMin * 60} onDone={stopVideo} />
+          <VideoOverlay key={video.key} video={video.video} muted={prefs.muted} maxSec={video.video.durationSec > 0 ? video.video.durationSec : videoCfg.maxMin * 60} onDone={stopVideo} onStop={() => handleVideoCommand(VIDEO_STOP)} />
         ) : null}
       </AnimatePresence>
     </div>

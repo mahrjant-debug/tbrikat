@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Square, Volume2 } from 'lucide-react';
 import { loadYouTubeApi, type YTPlayer } from '../../lib/youtube';
 import type { Video } from '../../lib/types';
 
@@ -17,6 +17,7 @@ export function VideoOverlay({
   muted,
   maxSec,
   onDone,
+  onStop,
 }: {
   video: Video;
   /** كتم المستخدم (زر «كتم الصوت» في الشريط) */
@@ -24,6 +25,8 @@ export function VideoOverlay({
   /** أقصى مدة عرض بالثواني تُحسب من لحظة بدء التشغيل؛ 0 = حتى ينتهي الفيديو */
   maxSec: number;
   onDone: () => void;
+  /** إيقاف يدوي من الشاشة نفسها (زر أو Esc): يلغي أيضاً التكرارات المتبقية */
+  onStop: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -32,6 +35,29 @@ export function VideoOverlay({
   const onDoneRef = useRef(onDone);
   const [playing, setPlaying] = useState(false);
   const [needsSound, setNeedsSound] = useState(false);
+  const [showStop, setShowStop] = useState(false);
+  const stopTimerRef = useRef<number | undefined>(undefined);
+  const onStopRef = useRef(onStop);
+  useEffect(() => {
+    onStopRef.current = onStop;
+  });
+
+  // زر الإيقاف يظهر عند تحريك المؤشر أو لمس الشاشة ويختفي بعد 5 ثوانٍ (ولا يختفي والمؤشر فوقه)؛ ومفتاح Esc يوقف دائماً
+  const reveal = () => {
+    setShowStop(true);
+    window.clearTimeout(stopTimerRef.current);
+    stopTimerRef.current = window.setTimeout(() => setShowStop(false), 5000);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onStopRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.clearTimeout(stopTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     onDoneRef.current = onDone;
@@ -160,7 +186,9 @@ export function VideoOverlay({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-black"
+      className={`fixed inset-0 z-[130] flex items-center justify-center bg-black ${showStop ? '' : 'cursor-none'}`}
+      onPointerMove={reveal}
+      onPointerDown={reveal}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -177,6 +205,20 @@ export function VideoOverlay({
         ref={hostRef}
         className="relative aspect-video w-[min(100vw,177.78dvh)] [&_iframe]:pointer-events-none [&_iframe]:h-full [&_iframe]:w-full"
       />
+      {showStop ? (
+        <button
+          type="button"
+          onClick={() => onStop()}
+          onPointerEnter={() => window.clearTimeout(stopTimerRef.current)}
+          onPointerLeave={reveal}
+          onFocus={() => window.clearTimeout(stopTimerRef.current)}
+          className="absolute left-[3vmin] top-[3vmin] z-20 flex items-center gap-2 rounded-full bg-black/70 px-[2.4vmin] py-[1.2vmin] font-cairo font-extrabold text-white shadow-2xl ring-1 ring-white/30 backdrop-blur hover:bg-red-600"
+          style={{ fontSize: 'clamp(0.85rem, 2.2vmin, 1.5rem)' }}
+          aria-label="إيقاف الفيديو"
+        >
+          <Square size={18} /> إيقاف الفيديو
+        </button>
+      ) : null}
       {needsSound ? (
         <button
           type="button"
