@@ -16,9 +16,9 @@ type Tab = 'congrats' | 'banned' | 'photos' | 'partners' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'congrats', label: 'التهاني', icon: Inbox },
+  { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
+  { id: 'photos', label: 'صور العرسان', icon: Images },
   { id: 'banned', label: 'الكلمات المحظورة', icon: Ban },
-  { id: 'photos', label: 'الصور', icon: Images },
-  { id: 'partners', label: 'الشركاء', icon: Handshake },
   { id: 'settings', label: 'الإعدادات', icon: Settings2 },
 ];
 
