@@ -11,6 +11,8 @@ interface Props {
   cards: Congrat[];
   baseDuration: number;
   adaptive: boolean;
+  /** إيقاف التبديل التلقائي (أثناء الفيديو)؛ يُستأنف من البطاقة نفسها بعد انتهائه */
+  paused?: boolean;
 }
 
 /** مدة بقاء البطاقة: مدة خاصة إن وُجدت، وإلا الأساس + زيادة للنصوص الطويلة (> 25 كلمة) */
@@ -42,7 +44,7 @@ function Dots({ index, total }: { index: number; total: number }) {
 const arrowCls =
   'absolute top-1/2 z-20 flex h-[2.8rem] w-[2.8rem] -translate-y-1/2 items-center justify-center rounded-full border border-line bg-white text-gold-deep shadow-md transition hover:scale-105 hover:bg-accent-soft';
 
-export const CardStage = memo(function CardStage({ cards: incoming, baseDuration, adaptive }: Props) {
+export const CardStage = memo(function CardStage({ cards: incoming, baseDuration, adaptive, paused = false }: Props) {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const currentIdRef = useRef<string | null>(null);
   const orderRef = useRef<string[]>([]);
@@ -94,11 +96,20 @@ export const CardStage = memo(function CardStage({ cards: incoming, baseDuration
 
   // مؤقت التبديل التلقائي: يُعاد ضبطه عند تغيّر البطاقة أو مدتها (والتنقل اليدوي يغيّر البطاقة)
   const duration = current ? cardDuration(current, baseDuration, adaptive) : 0;
+
+  // عند الاستئناف بعد الإيقاف نعيد رسم البطاقة نفسها (تعود كلماتها وشريط وقتها من البداية) ويبدأ مؤقتها كاملاً
+  const [epoch, setEpoch] = useState(0);
+  const wasPausedRef = useRef(false);
   useEffect(() => {
-    if (!currentKey || cardsRef.current.length < 2) return;
+    if (wasPausedRef.current && !paused) setEpoch((e) => e + 1);
+    wasPausedRef.current = paused;
+  }, [paused]);
+
+  useEffect(() => {
+    if (paused || !currentKey || cardsRef.current.length < 2) return;
     const t = window.setTimeout(() => step(1), duration * 1000);
     return () => window.clearTimeout(t);
-  }, [currentKey, duration, step, cards.length]);
+  }, [currentKey, duration, step, cards.length, paused, epoch]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -125,7 +136,7 @@ export const CardStage = memo(function CardStage({ cards: incoming, baseDuration
       <div className="relative min-h-0 flex-1">
         <AnimatePresence mode="wait">
           <motion.div
-            key={current.id}
+            key={`${current.id}:${epoch}`}
             className="h-full"
             initial={{ opacity: 0, scale: 0.97, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
