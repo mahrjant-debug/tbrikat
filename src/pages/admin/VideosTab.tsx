@@ -31,6 +31,32 @@ function ScheduleField({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
+function DurationField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label="مدة المقطع بالثواني (اختياري)" hint="يُعرض الفيديو هذه المدة فقط من لحظة بدئه ثم تعود الشاشة للتهاني. اتركه فارغاً ليُعرض حتى ينتهي">
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={86400}
+        step={1}
+        dir="ltr"
+        className={inputCls}
+        value={value}
+        placeholder="مثال: 30"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </Field>
+  );
+}
+
+/** نص الإدخال → ثوانٍ صحيحة (فارغ = 0)، أو null إن كان غير صالح */
+function parseDuration(v: string): number | null {
+  if (v.trim() === '') return 0;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 && n <= 86400 ? n : null;
+}
+
 function fmtStart(sec: number): string {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
@@ -100,7 +126,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
         <Field label="كل كم دقيقة؟">
           <Slider value={draft.intervalMin} min={1} max={60} suffix=" د" onChange={(v) => setDraft((d) => ({ ...d, intervalMin: v }))} />
         </Field>
-        <Field label="أقصى مدة للفيديو" hint="يُقطع الفيديو عند هذه المدة وتعود الشاشة للتهاني. 0 = يُعرض حتى ينتهي">
+        <Field label="أقصى مدة للفيديو" hint="يُقطع الفيديو عند هذه المدة وتعود الشاشة للتهاني. 0 = يُعرض حتى ينتهي. المدة المحددة للفيديو نفسه بالثواني تتقدم على هذا الحد">
           <Slider value={draft.maxMin} min={0} max={60} suffix=" د" onChange={(v) => setDraft((d) => ({ ...d, maxMin: v }))} />
         </Field>
         <div className="flex flex-wrap items-center gap-2">
@@ -142,6 +168,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
                   <div dir="ltr" className="truncate text-start text-xs text-ink-soft">
                     youtu.be/{v.videoId}
                     {v.start > 0 ? ` · يبدأ من ${fmtStart(v.start)}` : ''}
+                    {v.durationSec > 0 ? ` · مدة العرض ${v.durationSec} ث` : ''}
                   </div>
                   {v.scheduleAt > 0 ? (
                     <div
@@ -243,6 +270,7 @@ function AddVideoForm({
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [when, setWhen] = useState('');
+  const [dur, setDur] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
@@ -255,6 +283,8 @@ function AddVideoForm({
     if (existing.some((v) => v.videoId === parsed.videoId)) return setError('هذا الفيديو مضاف بالفعل.');
     const scheduleAt = fromLocalInput(when);
     if (when && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
+    const durationSec = parseDuration(dur);
+    if (durationSec === null) return setError('اكتب مدة صحيحة بالثواني (من 0 إلى 86400).');
 
     setBusy(true);
     setError('');
@@ -270,7 +300,7 @@ function AddVideoForm({
         }
         if (check.status === 'ok' && !finalTitle) finalTitle = check.title;
       }
-      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt }, order);
+      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt, durationSec }, order);
       onDone();
     } catch (err) {
       handleFirestoreError('video-add', err);
@@ -301,6 +331,7 @@ function AddVideoForm({
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoComplete="off" />
       </Field>
       <ScheduleField value={when} onChange={setWhen} />
+      <DurationField value={dur} onChange={setDur} />
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
           {error}
@@ -330,6 +361,7 @@ function AddVideoForm({
 function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: () => void; onDone: () => void }) {
   const [title, setTitle] = useState(video.title);
   const [when, setWhen] = useState(toLocalInput(video.scheduleAt));
+  const [dur, setDur] = useState(video.durationSec > 0 ? String(video.durationSec) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -339,10 +371,12 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
     const scheduleAt = fromLocalInput(when);
     // الموعد الماضي مقبول فقط إن لم يتغير (فيديو فائت موعده)؛ أي تغيير يجب أن يكون في المستقبل
     if (when && scheduleAt !== video.scheduleAt && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
+    const durationSec = parseDuration(dur);
+    if (durationSec === null) return setError('اكتب مدة صحيحة بالثواني (من 0 إلى 86400).');
     setBusy(true);
     setError('');
     try {
-      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0 });
+      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0, durationSec });
       onDone();
     } catch (err) {
       handleFirestoreError('video-update', err);
@@ -358,6 +392,7 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoFocus />
       </Field>
       <ScheduleField value={when} onChange={setWhen} />
+      <DurationField value={dur} onChange={setDur} />
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
           {error}

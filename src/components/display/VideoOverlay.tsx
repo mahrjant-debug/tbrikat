@@ -15,13 +15,14 @@ const STALL_MS = 20_000;
 export function VideoOverlay({
   video,
   muted,
-  maxMin,
+  maxSec,
   onDone,
 }: {
   video: Video;
   /** كتم المستخدم (زر «كتم الصوت» في الشريط) */
   muted: boolean;
-  maxMin: number;
+  /** أقصى مدة عرض بالثواني تُحسب من لحظة بدء التشغيل؛ 0 = حتى ينتهي الفيديو */
+  maxSec: number;
   onDone: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -63,7 +64,7 @@ export function VideoOverlay({
     const stallTimer = window.setTimeout(() => {
       if (!started) finish();
     }, STALL_MS);
-    const maxTimer = maxMin > 0 ? window.setTimeout(finish, maxMin * 60_000) : undefined;
+    let maxTimer: number | undefined;
 
     const nav = navigator as Navigator & { userActivation?: { hasBeenActive: boolean } };
     const startMuted = !(nav.userActivation?.hasBeenActive ?? false) || mutedRef.current;
@@ -100,7 +101,10 @@ export function VideoOverlay({
             },
             onStateChange: (e) => {
               if (e.data === YT.PlayerState.PLAYING) {
-                started = true;
+                if (!started) {
+                  started = true;
+                  if (maxSec > 0) maxTimer = window.setTimeout(finish, maxSec * 1000);
+                }
                 setPlaying(true);
               } else if (e.data === YT.PlayerState.ENDED) {
                 finish();

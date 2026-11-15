@@ -101,6 +101,8 @@ export interface Video {
   start: number;
   /** موعد عرض مستقل بالمللي ثانية؛ 0 = بلا موعد (يدخل في التناوب/التشغيل اليدوي) */
   scheduleAt: number;
+  /** مدة العرض بالثواني؛ 0 = حتى ينتهي الفيديو (أو الحد الأقصى العام) */
+  durationSec: number;
   order: number;
   createdAt: number;
 }
