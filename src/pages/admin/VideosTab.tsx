@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, CalendarClock, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Reorder, useDragControls } from 'motion/react';
+import { ArrowDown, ArrowUp, CalendarClock, GripVertical, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
 import { Button, ConfirmDialog, Field, Modal, Slider, Toggle, inputCls, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
 import { VIDEO_STOP } from '../../lib/constants';
-import { addVideo, deleteVideo, patchVideoConfig, swapOrder, triggerVideo, updateVideo } from '../../lib/db';
+import { addVideo, deleteVideo, patchVideoConfig, setVideosOrder, swapOrder, triggerVideo, updateVideo } from '../../lib/db';
 import { fromLocalInput, toLocalInput } from '../../lib/dates';
 import { handleFirestoreError } from '../../lib/firebase';
 import type { Video, VideoConfig } from '../../lib/types';
@@ -111,6 +112,30 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
     }
   };
 
+  // نسخة محلية مرتبة تتبع السحب فوراً، وتُحفظ عند الإفلات
+  const [items, setItems] = useState<Video[]>(videos);
+  const itemsRef = useRef<Video[]>(videos);
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+  useEffect(() => {
+    if (!draggingRef.current) setItems(videos);
+  }, [videos]);
+
+  const persistOrder = async () => {
+    draggingRef.current = false;
+    const list = itemsRef.current;
+    if (list.length === videos.length && list.every((v, i) => v.id === videos[i]?.id)) return;
+    try {
+      await setVideosOrder(list.map((v) => v.id));
+    } catch (e) {
+      handleFirestoreError('video-reorder', e);
+      toast.error('تعذّر حفظ الترتيب.');
+      setItems(videos);
+    }
+  };
+
   const nextOrder = videos.reduce((m, v) => Math.max(m, v.order), 0) + 1;
 
   return (
@@ -159,49 +184,27 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
             لا توجد فيديوهات. أضف رابط فيديو من يوتيوب.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {videos.map((v, i) => (
-              <li key={v.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-3">
-                <img src={thumbnailUrl(v.videoId)} alt="" loading="lazy" className="h-14 w-24 shrink-0 rounded-lg border border-line bg-black object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-cairo font-extrabold text-ink">{v.title || 'فيديو بلا عنوان'}</div>
-                  <div dir="ltr" className="truncate text-start text-xs text-ink-soft">
-                    youtu.be/{v.videoId}
-                    {v.start > 0 ? ` · يبدأ من ${fmtStart(v.start)}` : ''}
-                    {v.durationSec > 0 ? ` · مدة العرض ${v.durationSec} ث` : ''}
-                  </div>
-                  {v.scheduleAt > 0 ? (
-                    <div
-                      className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-                        v.scheduleAt > Date.now() ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      <CalendarClock size={12} />
-                      {v.scheduleAt > Date.now() ? 'يُعرض: ' : 'مضى موعده: '}
-                      {fmtSchedule(v.scheduleAt)}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="flex items-center">
-                  <button type="button" aria-label="تشغيل الآن على الشاشة" title="تشغيل الآن على الشاشة" onClick={() => void command(v.id, `أُرسل أمر تشغيل «${v.title || 'الفيديو'}» إلى شاشات العرض`)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
-                    <Play size={16} />
-                  </button>
-                  <button type="button" aria-label="تقديم" disabled={i === 0} onClick={() => void move(i, -1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
-                    <ArrowUp size={16} />
-                  </button>
-                  <button type="button" aria-label="تأخير" disabled={i === videos.length - 1} onClick={() => void move(i, 1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
-                    <ArrowDown size={16} />
-                  </button>
-                  <button type="button" aria-label="تعديل" onClick={() => setEditing(v)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
-                    <Pencil size={16} />
-                  </button>
-                  <button type="button" aria-label="حذف" onClick={() => setDeleting(v)} className="rounded-lg p-2 text-red-600 hover:bg-red-50">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mb-2 text-xs text-ink-soft">اسحب المقبض ⠿ لإعادة الترتيب (أو استخدم السهمين)، ويُحفظ الترتيب عند الإفلات.</p>
+            <Reorder.Group axis="y" values={items} onReorder={setItems} className="space-y-2">
+              {items.map((v, i) => (
+                <VideoRow
+                  key={v.id}
+                  v={v}
+                  first={i === 0}
+                  last={i === items.length - 1}
+                  onDragStart={() => {
+                    draggingRef.current = true;
+                  }}
+                  onDragEnd={() => void persistOrder()}
+                  onPlay={() => void command(v.id, `أُرسل أمر تشغيل «${v.title || 'الفيديو'}» إلى شاشات العرض`)}
+                  onMove={(dir) => void move(i, dir)}
+                  onEdit={() => setEditing(v)}
+                  onDelete={() => setDeleting(v)}
+                />
+              ))}
+            </Reorder.Group>
+          </>
         )}
       </div>
 
@@ -411,5 +414,89 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
         </button>
       </div>
     </form>
+  );
+}
+
+function VideoRow({
+  v,
+  first,
+  last,
+  onDragStart,
+  onDragEnd,
+  onPlay,
+  onMove,
+  onEdit,
+  onDelete,
+}: {
+  v: Video;
+  first: boolean;
+  last: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onPlay: () => void;
+  onMove: (dir: -1 | 1) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={v}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      whileDrag={{ scale: 1.02, zIndex: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}
+      style={{ position: 'relative' }}
+      className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-3"
+    >
+      <button
+        type="button"
+        aria-label="اسحب لإعادة الترتيب"
+        title="اسحب لإعادة الترتيب"
+        onPointerDown={(e) => controls.start(e)}
+        style={{ touchAction: 'none' }}
+        className="cursor-grab rounded-lg p-1.5 text-ink-soft hover:bg-accent-soft active:cursor-grabbing"
+      >
+        <GripVertical size={20} />
+      </button>
+      <img src={thumbnailUrl(v.videoId)} alt="" loading="lazy" draggable={false} className="h-14 w-24 shrink-0 rounded-lg border border-line bg-black object-cover" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-cairo font-extrabold text-ink">{v.title || 'فيديو بلا عنوان'}</div>
+        <div dir="ltr" className="truncate text-start text-xs text-ink-soft">
+          youtu.be/{v.videoId}
+          {v.start > 0 ? ` · يبدأ من ${fmtStart(v.start)}` : ''}
+          {v.durationSec > 0 ? ` · مدة العرض ${v.durationSec} ث` : ''}
+        </div>
+        {v.scheduleAt > 0 ? (
+          <div
+            className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+              v.scheduleAt > Date.now() ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            <CalendarClock size={12} />
+            {v.scheduleAt > Date.now() ? 'يُعرض: ' : 'مضى موعده: '}
+            {fmtSchedule(v.scheduleAt)}
+          </div>
+        ) : null}
+      </div>
+      <div className="flex items-center">
+        <button type="button" aria-label="تشغيل الآن على الشاشة" title="تشغيل الآن على الشاشة" onClick={onPlay} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+          <Play size={16} />
+        </button>
+        <button type="button" aria-label="تقديم" disabled={first} onClick={() => onMove(-1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
+          <ArrowUp size={16} />
+        </button>
+        <button type="button" aria-label="تأخير" disabled={last} onClick={() => onMove(1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
+          <ArrowDown size={16} />
+        </button>
+        <button type="button" aria-label="تعديل" onClick={onEdit} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+          <Pencil size={16} />
+        </button>
+        <button type="button" aria-label="حذف" onClick={onDelete} className="rounded-lg p-2 text-red-600 hover:bg-red-50">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </Reorder.Item>
   );
 }

@@ -252,6 +252,13 @@ export async function triggerVideo(videoDocId: string): Promise<number> {
   return at;
 }
 
+/** يعيد ترقيم الفيديوهات 1..n حسب الترتيب المعطى (دفعة واحدة) */
+export async function setVideosOrder(ids: string[]): Promise<void> {
+  const batch = writeBatch(db);
+  ids.forEach((id, i) => batch.update(doc(db, 'videos', id), { order: i + 1 }));
+  await batch.commit();
+}
+
 export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number; durationSec: number }, order: number): Promise<void> {
   await addDoc(collection(db, 'videos'), { ...data, order, createdAt: serverTimestamp() });
 }
