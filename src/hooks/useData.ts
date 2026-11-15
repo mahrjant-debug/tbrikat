@@ -14,6 +14,7 @@ import {
 } from '../lib/db';
 import { compileWordList, type CompiledWordList } from '../lib/arabic';
 import { hasCelebrated } from '../lib/celebrated';
+import { newestFirst } from '../lib/cardOrder';
 import { RECENT_APPROVAL_MS } from '../lib/constants';
 import type { BannedWord, Congrat, Partner, Photo, Settings, Video, VideoConfig } from '../lib/types';
 
@@ -91,7 +92,7 @@ export function useApprovedCongrats(onNewlyApproved: (cards: Congrat[]) => void)
   useEffect(() => {
     let known: Set<string> | null = null;
     return subscribeApproved((list) => {
-      setState({ cards: sortApproved(list), loaded: true });
+      setState({ cards: newestFirst(list), loaded: true });
       const fresh = known ? list.filter((c) => !known!.has(c.id)) : list;
       known = new Set(list.map((c) => c.id));
       const now = Date.now();

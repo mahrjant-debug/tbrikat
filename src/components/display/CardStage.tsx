@@ -1,8 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 import { countWords } from '../../lib/arabic';
-import { mergeOrder } from '../../lib/cardOrder';
+import { resolveIndex } from '../../lib/cardOrder';
 import { LONG_TEXT_WORDS } from '../../lib/constants';
 import type { Congrat } from '../../lib/types';
 import { CongratCard } from './CongratCard';
@@ -46,39 +46,20 @@ const arrowCls =
 
 export const CardStage = memo(function CardStage({ cards: incoming, baseDuration, adaptive, paused = false }: Props) {
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const currentIdRef = useRef<string | null>(null);
-  const orderRef = useRef<string[]>([]);
-
-  /**
-   * ترتيب العرض: التهاني المعتمدة بترتيب الاعتماد (الأقدم أولاً). والتهنئة التي تُعتمد الآن (خلال 3 دقائق)
-   * تدخل **بعد البطاقة الحالية مباشرة** فتكون التالية في الدوران بدل أن تنتظر آخر القائمة؛ وأي تهنئة قديمة
-   * تصل متأخرة (لقطة بدء ثانية مثلاً) توضع في موضعها الزمني. يبقى الترتيب ثابتاً بين اللقطات.
-   */
-  const cards = useMemo(() => {
-    const byId = new Map(incoming.map((c) => [c.id, c]));
-    const next = mergeOrder(orderRef.current, incoming, currentIdRef.current, Date.now());
-    orderRef.current = next;
-    return next.flatMap((id) => {
-      const c = byId.get(id);
-      return c ? [c] : [];
-    });
-  }, [incoming]);
+  const cards = incoming; // مرتّبة من الأحدث (رقم 1) إلى الأقدم
   const cardsRef = useRef(cards);
   useEffect(() => {
     cardsRef.current = cards;
   });
 
   // ثبّت البطاقة الحالية عند تغيّر القائمة؛ وإن حُذفت انتقل لنفس الموضع
-  const index = (() => {
-    if (!cards.length) return -1;
-    const i = currentId ? cards.findIndex((c) => c.id === currentId) : -1;
-    return i >= 0 ? i : 0;
-  })();
+  const lastIndexRef = useRef(0);
+  const index = resolveIndex(cards, currentId, lastIndexRef.current);
+  useEffect(() => {
+    if (index >= 0) lastIndexRef.current = index;
+  });
   const current = index >= 0 ? cards[index] : null;
   const currentKey = current?.id ?? null;
-  useEffect(() => {
-    currentIdRef.current = currentKey;
-  });
 
   useEffect(() => {
     if (currentKey !== currentId) setCurrentId(currentKey);

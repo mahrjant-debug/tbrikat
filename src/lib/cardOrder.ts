@@ -1,37 +1,23 @@
-import { RECENT_APPROVAL_MS } from './constants';
 import type { Congrat } from './types';
 
 const timeOf = (c: Congrat): number => c.approvedAt ?? c.createdAt;
 
 /**
- * ترتيب عرض التهاني في الصندوق (قائمة معرّفات).
- * - أول مرة: بترتيب الاعتماد (الأقدم أولاً).
- * - تهنئة اعتُمدت للتو (خلال 3 دقائق): تدخل بعد البطاقة الحالية مباشرة فتكون التالية في الدوران.
- * - تهنئة قديمة وصلت متأخرة (لقطة بدء ثانية): توضع في موضعها الزمني.
- * - المحذوفة/المخفية تخرج، ويبقى باقي الترتيب ثابتاً بين اللقطات.
+ * ترتيب صندوق التهاني: الأحدث اعتماداً هو رقم 1 والأقدم أخيراً.
+ * عند اعتماد تهنئة جديدة تصبح رقم 1 وتنزل البقية رقماً، والدوران يتابع من البطاقة الحالية نزولاً
+ * (نحو الأقدم) ثم يلتفّ من الأحدث، فلا تُهمَل تهنئة قديمة مهما توالت التهاني الجديدة.
  */
-export function mergeOrder(prevIds: string[], incoming: Congrat[], currentId: string | null, now: number): string[] {
-  const byId = new Map(incoming.map((c) => [c.id, c]));
-  const prev = prevIds.filter((id) => byId.has(id));
-  const known = new Set(prev);
-  const fresh = incoming.filter((c) => !known.has(c.id));
-  if (!prev.length) return incoming.map((c) => c.id);
-  if (!fresh.length) return prev;
+export function newestFirst(list: Congrat[]): Congrat[] {
+  return [...list].sort((a, b) => timeOf(b) - timeOf(a) || b.createdAt - a.createdAt || (a.id < b.id ? -1 : 1));
+}
 
-  const next = [...prev];
-  const byTime = [...fresh].sort((x, y) => timeOf(x) - timeOf(y));
-  const recent = byTime.filter((c) => now - timeOf(c) < RECENT_APPROVAL_MS);
-  const older = byTime.filter((c) => now - timeOf(c) >= RECENT_APPROVAL_MS);
-  for (const c of older) {
-    const at = next.findIndex((id) => {
-      const other = byId.get(id);
-      return other ? timeOf(other) > timeOf(c) : false;
-    });
-    next.splice(at < 0 ? next.length : at, 0, c.id);
-  }
-  if (recent.length) {
-    const cur = currentId ? next.indexOf(currentId) : -1;
-    next.splice(cur >= 0 ? cur + 1 : 0, 0, ...recent.map((c) => c.id));
-  }
-  return next;
+/**
+ * موضع البطاقة الحالية في القائمة: بمعرّفها إن وُجدت؛ وإن حُذفت أو أُخفيت فنفس موضعها السابق
+ * (أو آخر موضع)، وعند عدم وجود حالية (أول عرض) الأولى أي الأحدث.
+ */
+export function resolveIndex(cards: Congrat[], currentId: string | null, lastIndex: number): number {
+  if (!cards.length) return -1;
+  const i = currentId ? cards.findIndex((c) => c.id === currentId) : -1;
+  if (i >= 0) return i;
+  return currentId ? Math.min(Math.max(lastIndex, 0), cards.length - 1) : 0;
 }
