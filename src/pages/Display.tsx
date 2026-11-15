@@ -235,7 +235,8 @@ export default function Display() {
   const { config: videoCfg, loaded: videoCfgLoaded } = useVideoConfig();
   const videosRef = useRef<Video[]>([]);
   useEffect(() => {
-    videosRef.current = videos;
+    // الفيديوهات المخفية لا تدخل في أي عرض (تناوب أو موعد أو تشغيل يدوي)
+    videosRef.current = videos.filter((v) => v.enabled);
   }, [videos]);
   const videoIndexRef = useRef(-1);
   const [video, setVideo] = useState<{ video: Video; key: number } | null>(null);
@@ -311,6 +312,13 @@ export default function Display() {
     videoActiveRef.current = false;
     setVideo(null);
   }, []);
+
+  // إخفاء أو حذف الفيديو الجاري عرضه أو المنتظر تكراره: يتوقف فوراً
+  useEffect(() => {
+    const live = new Set(videos.filter((v) => v.enabled).map((v) => v.id));
+    repeatQueueRef.current = repeatQueueRef.current.filter((r) => live.has(r.id));
+    if (video && !live.has(video.video.id)) stopVideo();
+  }, [videos, video, stopVideo]);
 
   useEffect(() => {
     const check = window.setInterval(tryVideo, 1000);

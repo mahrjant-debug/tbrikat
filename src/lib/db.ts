@@ -159,6 +159,7 @@ export function subscribeVideos(cb: (list: Video[]) => void): Unsubscribe {
             repeatCount: typeof x.repeatCount === 'number' && x.repeatCount >= 1 ? x.repeatCount : 1,
             repeatEveryMin: typeof x.repeatEveryMin === 'number' && x.repeatEveryMin >= 1 ? x.repeatEveryMin : 10,
             repeatUntil: typeof x.repeatUntil === 'number' && x.repeatUntil > 0 ? x.repeatUntil : 0,
+            enabled: x.enabled !== false,
             order: typeof x.order === 'number' ? x.order : 0,
             createdAt: toMs(x.createdAt),
           };
@@ -263,11 +264,15 @@ export async function setVideosOrder(ids: string[]): Promise<void> {
 }
 
 export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number; durationSec: number; repeatCount: number; repeatEveryMin: number; repeatUntil: number }, order: number): Promise<void> {
-  await addDoc(collection(db, 'videos'), { ...data, order, createdAt: serverTimestamp() });
+  await addDoc(collection(db, 'videos'), { ...data, enabled: true, order, createdAt: serverTimestamp() });
 }
 
 export async function updateVideo(id: string, patch: { title: string; scheduleAt: number; durationSec: number; repeatCount: number; repeatEveryMin: number; repeatUntil: number }): Promise<void> {
   await updateDoc(doc(db, 'videos', id), patch);
+}
+
+export async function setVideoEnabled(id: string, enabled: boolean): Promise<void> {
+  await updateDoc(doc(db, 'videos', id), { enabled });
 }
 
 export async function deleteVideo(id: string): Promise<void> {

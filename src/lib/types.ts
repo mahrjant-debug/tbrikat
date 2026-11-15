@@ -109,6 +109,8 @@ export interface Video {
   repeatEveryMin: number;
   /** تاريخ انتهاء عرض الفيديو بالمللي ثانية: لا عروض ولا تكرار بعده؛ 0 = بلا تاريخ */
   repeatUntil: number;
+  /** false = مخفي: لا يُعرض أبداً (لا تناوب ولا موعد ولا تشغيل يدوي) حتى يُظهَر */
+  enabled: boolean;
   order: number;
   createdAt: number;
 }

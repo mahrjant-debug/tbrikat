@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
-import { ArrowDown, ArrowUp, CalendarClock, Eye, GripVertical, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, Eye, EyeOff, GripVertical, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
 import { Button, ConfirmDialog, Field, Modal, Slider, Toggle, inputCls, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
 import { VIDEO_STOP } from '../../lib/constants';
-import { addVideo, deleteVideo, patchVideoConfig, setVideosOrder, swapOrder, triggerVideo, updateVideo } from '../../lib/db';
+import { addVideo, deleteVideo, patchVideoConfig, setVideoEnabled, setVideosOrder, swapOrder, triggerVideo, updateVideo } from '../../lib/db';
 import { fromLocalInput, toLocalInput } from '../../lib/dates';
 import { handleFirestoreError } from '../../lib/firebase';
 import type { Video, VideoConfig } from '../../lib/types';
@@ -157,6 +157,16 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
     }
   };
 
+  const toggleEnabled = async (v: Video) => {
+    try {
+      await setVideoEnabled(v.id, !v.enabled);
+      toast.success(v.enabled ? 'أُخفي الفيديو ولن يُعرض حتى تُظهره' : 'أُظهر الفيديو');
+    } catch (e) {
+      handleFirestoreError('video-enabled', e);
+      toast.error('تعذّر التغيير.');
+    }
+  };
+
   const move = async (i: number, dir: -1 | 1) => {
     const a = videos[i];
     const b = videos[i + dir];
@@ -257,6 +267,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
                   onDragEnd={() => void persistOrder()}
                   onPlay={() => void command(v.id, `أُرسل أمر تشغيل «${v.title || 'الفيديو'}» إلى شاشات العرض`)}
                   onPreview={() => setPreview(v)}
+                  onToggle={() => void toggleEnabled(v)}
                   onMove={(dir) => void move(i, dir)}
                   onEdit={() => setEditing(v)}
                   onDelete={() => setDeleting(v)}
@@ -529,6 +540,7 @@ function VideoRow({
   onDragEnd,
   onPlay,
   onPreview,
+  onToggle,
   onMove,
   onEdit,
   onDelete,
@@ -540,6 +552,7 @@ function VideoRow({
   onDragEnd: () => void;
   onPlay: () => void;
   onPreview: () => void;
+  onToggle: () => void;
   onMove: (dir: -1 | 1) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -555,7 +568,7 @@ function VideoRow({
       onDragEnd={onDragEnd}
       whileDrag={{ scale: 1.02, zIndex: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}
       style={{ position: 'relative' }}
-      className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-3"
+      className={`flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-3 ${v.enabled ? '' : 'opacity-60'}`}
     >
       <button
         type="button"
@@ -570,6 +583,11 @@ function VideoRow({
       <img src={thumbnailUrl(v.videoId)} alt="" loading="lazy" draggable={false} className="h-14 w-24 shrink-0 rounded-lg border border-line bg-black object-cover" />
       <div className="min-w-0 flex-1">
         <div className="truncate font-cairo font-extrabold text-ink">{v.title || 'فيديو بلا عنوان'}</div>
+        {!v.enabled ? (
+          <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-bold text-gray-700">
+            <EyeOff size={12} /> مخفي — لا يُعرض
+          </div>
+        ) : null}
         <div dir="ltr" className="truncate text-start text-xs text-ink-soft">
           youtu.be/{v.videoId}
           {v.start > 0 ? ` · يبدأ من ${fmtStart(v.start)}` : ''}
@@ -595,10 +613,21 @@ function VideoRow({
         ) : null}
       </div>
       <div className="flex items-center">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={v.enabled}
+          aria-label={v.enabled ? 'إخفاء الفيديو (إيقاف عرضه)' : 'إظهار الفيديو'}
+          title={v.enabled ? 'ظاهر: اضغط لإخفائه وإيقاف عرضه' : 'مخفي: اضغط لإظهاره'}
+          onClick={onToggle}
+          className={`relative me-2 h-6 w-11 shrink-0 rounded-full transition ${v.enabled ? 'bg-accent' : 'bg-gray-300'}`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${v.enabled ? 'right-0.5' : 'right-[1.375rem]'}`} />
+        </button>
         <button type="button" aria-label="معاينة الفيديو" title="معاينة هنا في اللوحة (لا تُرسل إلى الشاشة)" onClick={onPreview} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
           <Eye size={16} />
         </button>
-        <button type="button" aria-label="تشغيل الآن على الشاشة" title="تشغيل الآن على الشاشة" onClick={onPlay} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+        <button type="button" aria-label="تشغيل الآن على الشاشة" title={v.enabled ? 'تشغيل الآن على الشاشة' : 'أظهر الفيديو أولاً'} disabled={!v.enabled} onClick={onPlay} className="rounded-lg p-2 text-accent hover:bg-accent-soft disabled:opacity-30">
           <Play size={16} />
         </button>
         <button type="button" aria-label="تقديم" disabled={first} onClick={() => onMove(-1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
