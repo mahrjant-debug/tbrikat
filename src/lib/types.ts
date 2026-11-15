@@ -100,3 +100,13 @@ export type BusMessage =
   | { type: 'approved'; cards: Congrat[] }
   | { type: 'spotlight'; photoId: string; at: number }
   | { type: 'sponsor'; partnerId: string; at: number };
+
+export interface AdminProfile {
+  /** بريد المشرف بأحرف صغيرة، وهو أيضاً معرّف الوثيقة */
+  email: string;
+  name: string;
+  /** owner = المشرف الرئيسي (لا يُحذف) */
+  role: 'admin' | 'owner';
+  createdAt: number;
+  createdBy?: string;
+}

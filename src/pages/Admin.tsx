@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { Bell, BellOff, Ban, Handshake, Images, Inbox, Loader2, LogOut, Settings2, Volume2, VolumeX, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, BellOff, Ban, Handshake, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { ToastProvider } from '../components/ui';
+import { useAdminAccess } from '../hooks/useAdminAccess';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { useAllCongrats, useAsset, useBannedWords, usePartners, usePhotos, useSettings } from '../hooks/useData';
 import { logout, useAuth } from '../lib/auth';
+import { subscribeAdmins } from '../lib/db';
+import type { AdminProfile } from '../lib/types';
+import { AdminsTab } from './admin/AdminsTab';
 import { BannedTab } from './admin/BannedTab';
 import { CongratsTab } from './admin/CongratsTab';
 import { Login } from './admin/Login';
@@ -12,13 +16,14 @@ import { PartnersTab } from './admin/PartnersTab';
 import { PhotosTab } from './admin/PhotosTab';
 import { SettingsTab } from './admin/SettingsTab';
 
-type Tab = 'congrats' | 'banned' | 'photos' | 'partners' | 'settings';
+type Tab = 'congrats' | 'banned' | 'photos' | 'partners' | 'admins' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'congrats', label: 'التهاني', icon: Inbox },
   { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
   { id: 'photos', label: 'صور العرسان', icon: Images },
   { id: 'banned', label: 'الكلمات المحظورة', icon: Ban },
+  { id: 'admins', label: 'المشرفون', icon: Users },
   { id: 'settings', label: 'الإعدادات', icon: Settings2 },
 ];
 
@@ -35,16 +40,49 @@ export default function Admin() {
         ) : auth.status === 'out' ? (
           <Login />
         ) : (
-          <Panel email={auth.user.email ?? ''} />
+          <Gate email={auth.user.email ?? ''} displayName={auth.user.displayName ?? ''} />
         )}
       </div>
     </ToastProvider>
   );
 }
 
-/** لوحة التحكم: تُحمَّل بياناتها (اشتراكات واحدة ثابتة) بعد تسجيل الدخول فقط */
-function Panel({ email }: { email: string }) {
+/** بوابة الصلاحيات: لا يُفتح شيء من اللوحة قبل التحقق أن الحساب مشرف */
+function Gate({ email, displayName }: { email: string; displayName: string }) {
+  const access = useAdminAccess(email, displayName);
+  if (access.status === 'loading') {
+    return (
+      <div className="flex min-h-dvh items-center justify-center text-accent" role="status" aria-label="جارٍ التحقق من الصلاحية">
+        <Loader2 className="animate-spin" size={32} />
+      </div>
+    );
+  }
+  if (access.status === 'denied') {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+        <ShieldAlert size={48} className="text-red-500" />
+        <h1 className="font-cairo text-2xl font-extrabold text-ink">ليس لديك صلاحية المشرف</h1>
+        <p className="leading-7 text-ink-soft">
+          الحساب <span dir="ltr" className="font-bold">{email}</span> ليس ضمن المشرفين. اطلب من المشرف الرئيسي إضافتك، أو سجّل الدخول بحساب آخر.
+        </p>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 font-bold text-white hover:brightness-110"
+        >
+          <LogOut size={16} /> تسجيل الخروج
+        </button>
+      </main>
+    );
+  }
+  return <Panel me={access.profile} />;
+}
+
+/** لوحة التحكم: تُحمَّل بياناتها (اشتراكات واحدة ثابتة) بعد التحقق من الصلاحية فقط */
+function Panel({ me }: { me: AdminProfile }) {
   const [tab, setTab] = useState<Tab>('congrats');
+  const [admins, setAdmins] = useState<AdminProfile[]>([]);
+  useEffect(() => subscribeAdmins(setAdmins), []);
   const alerts = useAdminAlerts();
   const { list } = useAllCongrats(alerts.onArrived);
   const { settings } = useSettings();
@@ -62,8 +100,8 @@ function Panel({ email }: { email: string }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-cairo text-2xl font-extrabold text-ink">لوحة المشرف</h1>
-          <p className="text-xs text-ink-soft" dir="ltr">
-            {email}
+          <p className="text-xs text-ink-soft">
+            {me.name} · <span dir="ltr">{me.email}</span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -150,6 +188,7 @@ function Panel({ email }: { email: string }) {
       {tab === 'banned' ? <BannedTab words={words} compiled={compiled} /> : null}
       {tab === 'photos' ? <PhotosTab photos={photos} /> : null}
       {tab === 'partners' ? <PartnersTab partners={partners} /> : null}
+      {tab === 'admins' ? <AdminsTab admins={admins} me={me} /> : null}
       {tab === 'settings' ? <SettingsTab settings={settings} logo={logo} customBg={customBg} footerImg={footerImg} /> : null}
     </main>
   );

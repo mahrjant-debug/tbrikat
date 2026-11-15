@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   orderBy,
@@ -19,7 +20,7 @@ import {
 } from '@firebase/firestore';
 import { db, handleFirestoreError } from './firebase';
 import { normalizeSettings } from './defaults';
-import type { BannedWord, Congrat, CongratStatus, Partner, Photo, Settings } from './types';
+import type { AdminProfile, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings } from './types';
 
 type Raw = Record<string, unknown>;
 
@@ -266,4 +267,69 @@ export async function savePartner(
 
 export async function deletePartner(id: string): Promise<void> {
   await deleteDoc(doc(db, 'partners', id));
+}
+
+// ---------------- المشرفون ----------------
+
+function mapAdmin(id: string, x: Raw): AdminProfile {
+  return {
+    email: String(x.email ?? id),
+    name: String(x.name ?? ''),
+    role: x.role === 'owner' ? 'owner' : 'admin',
+    createdAt: toMs(x.createdAt),
+    createdBy: typeof x.createdBy === 'string' ? x.createdBy : undefined,
+  };
+}
+
+/** وثيقة مشرف واحد؛ الخطأ (permission-denied) يعني أن الحساب ليس مشرفاً أو سُحبت صلاحيته. */
+export function subscribeAdminProfile(
+  email: string,
+  cb: (profile: AdminProfile | null, fromCache: boolean) => void,
+  onError: (e: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'admins', email),
+    (snap) => cb(snap.exists() ? mapAdmin(snap.id, snap.data({ serverTimestamps: 'estimate' }) as Raw) : null, snap.metadata.fromCache),
+    onError,
+  );
+}
+
+export function subscribeAdmins(cb: (list: AdminProfile[]) => void): Unsubscribe {
+  return onSnapshot(
+    collection(db, 'admins'),
+    (snap) =>
+      cb(
+        snap.docs
+          .map((d) => mapAdmin(d.id, d.data({ serverTimestamps: 'estimate' }) as Raw))
+          .sort((a, b) => (a.role === b.role ? a.createdAt - b.createdAt : a.role === 'owner' ? -1 : 1)),
+      ),
+    errCb('admins'),
+  );
+}
+
+export async function createAdminProfile(
+  email: string,
+  name: string,
+  createdBy: string,
+  role: 'admin' | 'owner' = 'admin',
+): Promise<void> {
+  await setDoc(doc(db, 'admins', email), { name, email, role, createdAt: serverTimestamp(), createdBy });
+}
+
+export async function updateAdminName(email: string, name: string): Promise<void> {
+  const snap = await getDoc(doc(db, 'admins', email));
+  if (!snap.exists()) throw new Error('admin-not-found');
+  const x = snap.data() as Raw;
+  // القواعد تشترط إرسال الوثيقة كاملة بنفس الدور والبريد وتاريخ الإنشاء
+  await setDoc(doc(db, 'admins', email), {
+    name,
+    email,
+    role: x.role === 'owner' ? 'owner' : 'admin',
+    createdAt: x.createdAt,
+    ...(typeof x.createdBy === 'string' ? { createdBy: x.createdBy } : {}),
+  });
+}
+
+export async function deleteAdminProfile(email: string): Promise<void> {
+  await deleteDoc(doc(db, 'admins', email));
 }
