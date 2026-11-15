@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
-import { ArrowDown, ArrowUp, CalendarClock, GripVertical, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, Eye, GripVertical, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
 import { Button, ConfirmDialog, Field, Modal, Slider, Toggle, inputCls, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
 import { VIDEO_STOP } from '../../lib/constants';
@@ -70,6 +70,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Video | null>(null);
   const [deleting, setDeleting] = useState<Video | null>(null);
+  const [preview, setPreview] = useState<Video | null>(null);
 
   // مسودة محلية لجدولة العرض التلقائي؛ تُحفظ بزر (حتى لا تُكتب كل حركة للمنزلق)
   const [draft, setDraft] = useState({ enabled: config.enabled, intervalMin: config.intervalMin, maxMin: config.maxMin });
@@ -198,6 +199,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
                   }}
                   onDragEnd={() => void persistOrder()}
                   onPlay={() => void command(v.id, `أُرسل أمر تشغيل «${v.title || 'الفيديو'}» إلى شاشات العرض`)}
+                  onPreview={() => setPreview(v)}
                   onMove={(dir) => void move(i, dir)}
                   onEdit={() => setEditing(v)}
                   onDelete={() => setDeleting(v)}
@@ -233,6 +235,18 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
               toast.success('تم الحفظ');
             }}
           />
+        ) : null}
+      </Modal>
+
+      <Modal open={preview !== null} onClose={() => setPreview(null)} title={preview?.title || 'معاينة الفيديو'} wide>
+        {preview ? (
+          <div className="space-y-2">
+            <VideoPreview videoId={preview.videoId} start={preview.start} />
+            <p className="text-xs leading-6 text-ink-soft">
+              معاينة خاصة بهذه اللوحة فقط، ولا تظهر على شاشة العرض.
+              {preview.durationSec > 0 ? ` على الشاشة سيُعرض ${preview.durationSec} ثانية فقط من لحظة بدئه.` : ''}
+            </p>
+          </div>
         ) : null}
       </Modal>
 
@@ -274,6 +288,7 @@ function AddVideoForm({
   const [title, setTitle] = useState('');
   const [when, setWhen] = useState('');
   const [dur, setDur] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
@@ -325,6 +340,7 @@ function AddVideoForm({
             setUrl(e.target.value);
             setError('');
             setWarning('');
+            setShowPreview(false);
           }}
           autoFocus
           autoComplete="off"
@@ -333,6 +349,17 @@ function AddVideoForm({
       <Field label="العنوان (اختياري)" hint="إن تركته فارغاً يُجلب عنوان الفيديو تلقائياً">
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoComplete="off" />
       </Field>
+      {(() => {
+        const p = url.trim() ? parseYouTube(url) : null;
+        if (!p || !('videoId' in p)) return null;
+        return showPreview ? (
+          <VideoPreview videoId={p.videoId} start={p.start} />
+        ) : (
+          <Button variant="soft" onClick={() => setShowPreview(true)}>
+            <Eye size={16} /> معاينة الفيديو
+          </Button>
+        );
+      })()}
       <ScheduleField value={when} onChange={setWhen} />
       <DurationField value={dur} onChange={setDur} />
       {error ? (
@@ -424,6 +451,7 @@ function VideoRow({
   onDragStart,
   onDragEnd,
   onPlay,
+  onPreview,
   onMove,
   onEdit,
   onDelete,
@@ -434,6 +462,7 @@ function VideoRow({
   onDragStart: () => void;
   onDragEnd: () => void;
   onPlay: () => void;
+  onPreview: () => void;
   onMove: (dir: -1 | 1) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -481,6 +510,9 @@ function VideoRow({
         ) : null}
       </div>
       <div className="flex items-center">
+        <button type="button" aria-label="معاينة الفيديو" title="معاينة هنا في اللوحة (لا تُرسل إلى الشاشة)" onClick={onPreview} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+          <Eye size={16} />
+        </button>
         <button type="button" aria-label="تشغيل الآن على الشاشة" title="تشغيل الآن على الشاشة" onClick={onPlay} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
           <Play size={16} />
         </button>
@@ -498,5 +530,22 @@ function VideoRow({
         </button>
       </div>
     </Reorder.Item>
+  );
+}
+
+/** مشغّل يوتيوب بأزرار التحكم الكاملة للمعاينة داخل اللوحة (يتوقف بإغلاق النافذة أو الإخفاء) */
+function VideoPreview({ videoId, start }: { videoId: string; start: number }) {
+  const src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1${start > 0 ? `&start=${start}` : ''}`;
+  return (
+    <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+      <iframe
+        title="معاينة الفيديو"
+        src={src}
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        className="h-full w-full border-0"
+      />
+    </div>
   );
 }
