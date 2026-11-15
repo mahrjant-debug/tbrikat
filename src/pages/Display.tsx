@@ -489,7 +489,7 @@ export default function Display() {
             ) : phase === 'finale' ? (
               <FinalePanel title={cdTitle} sound={sound} />
             ) : (
-              <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} paused={video !== null} />
+              <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} paused={video !== null || sponsor !== null} />
             )}
             <AnimatePresence>
               {phase === 'normal' && highlight && !sponsor && !video ? (
