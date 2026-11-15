@@ -50,7 +50,21 @@ export interface Settings {
   stripSpeed: number; // 1..10
   soundEnabled: boolean;
   particlesEnabled: boolean;
-  showPartners: boolean;
+  /** الصندوق الصغير لشركاء النجاح في الشاشة الرئيسية: مخفي / للجوال فقط / للجميع */
+  partnersBox: 'off' | 'mobile' | 'all';
+  /** شاشة الشريك بملء الشاشة */
+  sponsorEnabled: boolean;
+  sponsorIntervalMin: number;
+  sponsorDurationSec: number;
+  sponsorRibbon: string;
+  sponsorMessage: string;
+  festivalNumber: string;
+  sponsorFooterHandle: string;
+  sponsorFooterText: string;
+  hasFooterImage: boolean;
+  /** يُحدَّث من لوحة المشرف لعرض شريك الآن */
+  sponsorTriggerAt: number;
+  sponsorTriggerId: string;
   countdown: CountdownSettings;
   spotlight: SpotlightSettings;
   /** يُحدَّث من لوحة المشرف لتشغيل التسليط على الشاشات */
@@ -72,6 +86,8 @@ export interface Partner {
   name: string;
   category: string;
   logo: string; // dataUrl أو ''
+  /** رسالة خاصة بهذا الشريك (اختيارية؛ الافتراضي الرسالة العامة) */
+  message: string;
   order: number;
 }
 
@@ -82,4 +98,5 @@ export interface BannedWord {
 
 export type BusMessage =
   | { type: 'approved'; cards: Congrat[] }
-  | { type: 'spotlight'; photoId: string; at: number };
+  | { type: 'spotlight'; photoId: string; at: number }
+  | { type: 'sponsor'; partnerId: string; at: number };

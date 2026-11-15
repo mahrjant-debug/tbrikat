@@ -53,6 +53,7 @@ function Panel({ email }: { email: string }) {
   const partners = usePartners();
   const logo = useAsset('logo');
   const customBg = useAsset('background');
+  const footerImg = useAsset('footer');
 
   const pendingCount = list.filter((c) => c.status === 'pending').length;
 
@@ -149,7 +150,7 @@ function Panel({ email }: { email: string }) {
       {tab === 'banned' ? <BannedTab words={words} compiled={compiled} /> : null}
       {tab === 'photos' ? <PhotosTab photos={photos} /> : null}
       {tab === 'partners' ? <PartnersTab partners={partners} /> : null}
-      {tab === 'settings' ? <SettingsTab settings={settings} logo={logo} customBg={customBg} /> : null}
+      {tab === 'settings' ? <SettingsTab settings={settings} logo={logo} customBg={customBg} footerImg={footerImg} /> : null}
     </main>
   );
 }

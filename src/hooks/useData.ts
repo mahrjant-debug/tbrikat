@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETTINGS } from '../lib/defaults';
 import {
+  type AssetName,
   subscribeAllCongrats,
   subscribeApproved,
   subscribeAsset,
@@ -22,7 +23,7 @@ export function useSettings(): { settings: Settings; loaded: boolean; exists: bo
   return state;
 }
 
-export function useAsset(name: 'logo' | 'background'): string {
+export function useAsset(name: AssetName): string {
   const [url, setUrl] = useState('');
   useEffect(() => subscribeAsset(name, setUrl), [name]);
   return url;

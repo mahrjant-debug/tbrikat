@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Handshake, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Handshake, ImagePlus, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Button, ConfirmDialog, Field, Modal, inputCls, useToast } from '../../components/ui';
-import { deletePartner, savePartner, swapOrder } from '../../lib/db';
+import { postBus } from '../../lib/channel';
+import { deletePartner, savePartner, swapOrder, triggerSponsor } from '../../lib/db';
 import { handleFirestoreError } from '../../lib/firebase';
-import { LOGO_OPTS, compressImage } from '../../lib/image';
+import { PARTNER_LOGO_OPTS, compressImage } from '../../lib/image';
 import type { Partner } from '../../lib/types';
 
 export function PartnersTab({ partners }: { partners: Partner[] }) {
@@ -26,10 +27,21 @@ export function PartnersTab({ partners }: { partners: Partner[] }) {
 
   const nextOrder = partners.reduce((m, p) => Math.max(m, p.order), 0) + 1;
 
+  const showNow = async (p: Partner) => {
+    try {
+      const at = await triggerSponsor(p.id);
+      postBus({ type: 'sponsor', partnerId: p.id, at });
+      toast.success(`أُرسل أمر عرض «${p.name}» إلى شاشات العرض`);
+    } catch (e) {
+      handleFirestoreError('sponsor-trigger', e);
+      toast.error('تعذّر إرسال الأمر.');
+    }
+  };
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="text-sm text-ink-soft">يظهر شريكان في كل عرض ويتبدلان كل 5 ثوانٍ على الشاشة.</p>
+        <p className="text-sm text-ink-soft">يظهر شريك واحد بملء الشاشة كل بضع دقائق (يُضبط من الإعدادات) بالتناوب حسب الترتيب أدناه.</p>
         <Button onClick={() => setEditing('new')}>
           <Plus size={16} /> إضافة شريك
         </Button>
@@ -51,8 +63,12 @@ export function PartnersTab({ partners }: { partners: Partner[] }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-cairo font-extrabold text-ink">{p.name}</div>
                 <div className="truncate text-sm text-gold-deep">{p.category}</div>
+                {p.message ? <div className="truncate text-xs text-ink-soft">رسالة خاصة: {p.message}</div> : null}
               </div>
               <div className="flex items-center">
+                <button type="button" aria-label="عرض الآن على الشاشة" title="عرض الآن على الشاشة" onClick={() => void showNow(p)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+                  <Play size={16} />
+                </button>
                 <button type="button" aria-label="تقديم" disabled={i === 0} onClick={() => void move(i, -1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
                   <ArrowUp size={16} />
                 </button>
@@ -121,13 +137,14 @@ function PartnerForm({
   onCancel,
 }: {
   initial: Partner | null;
-  onSave: (d: { name: string; category: string; logo: string }) => void;
+  onSave: (d: { name: string; category: string; logo: string; message: string }) => void;
   onCancel: () => void;
 }) {
   const toast = useToast();
   const [name, setName] = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [logo, setLogo] = useState(initial?.logo ?? '');
+  const [message, setMessage] = useState(initial?.message ?? '');
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -135,11 +152,14 @@ function PartnerForm({
       <Field label="اسم الراعي">
         <input className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="الفئة" hint="مثال: الراعي الذهبي، شريك التقنية">
+      <Field label="الفئة (اختيارية)" hint="مثال: الراعي الذهبي، شريك التقنية — تظهر تحت الاسم بخط صغير">
         <input className={inputCls} value={category} maxLength={40} onChange={(e) => setCategory(e.target.value)} />
       </Field>
+      <Field label="رسالة خاصة بهذا الشريك (اختيارية)" hint="اتركها فارغة لاستخدام رسالة الشكر العامة من الإعدادات">
+        <textarea className={inputCls} rows={3} value={message} maxLength={240} onChange={(e) => setMessage(e.target.value)} />
+      </Field>
       <div>
-        <span className="mb-1 block text-sm font-bold text-ink">الشعار</span>
+        <span className="mb-1 block text-sm font-bold text-ink">الشعار (اختياري)</span>
         <div className="flex items-center gap-3">
           {logo ? <img src={logo} alt="" className="h-16 w-16 rounded-xl border border-line object-contain" /> : null}
           <input
@@ -151,7 +171,7 @@ function PartnerForm({
               const f = e.target.files?.[0];
               if (!f) return;
               try {
-                setLogo(await compressImage(f, LOGO_OPTS));
+                setLogo(await compressImage(f, PARTNER_LOGO_OPTS));
               } catch (err) {
                 toast.error(err instanceof Error ? err.message : 'تعذّر معالجة الصورة');
               }
@@ -172,7 +192,7 @@ function PartnerForm({
         <Button variant="ghost" onClick={onCancel}>
           إلغاء
         </Button>
-        <Button disabled={!name.trim()} onClick={() => onSave({ name: name.trim(), category: category.trim(), logo })}>
+        <Button disabled={!name.trim()} onClick={() => onSave({ name: name.trim(), category: category.trim(), logo, message: message.trim() })}>
           حفظ
         </Button>
       </div>

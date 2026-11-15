@@ -57,7 +57,9 @@ export function subscribeSettings(cb: (s: Settings, exists: boolean) => void): U
   );
 }
 
-export function subscribeAsset(name: 'logo' | 'background', cb: (dataUrl: string) => void): Unsubscribe {
+export type AssetName = 'logo' | 'background' | 'footer';
+
+export function subscribeAsset(name: AssetName, cb: (dataUrl: string) => void): Unsubscribe {
   return onSnapshot(
     doc(db, 'settings', name),
     (snap) => cb(String((snap.data() as Raw | undefined)?.dataUrl ?? '')),
@@ -130,6 +132,7 @@ export function subscribePartners(cb: (list: Partner[]) => void): Unsubscribe {
             name: String(x.name ?? ''),
             category: String(x.category ?? ''),
             logo: String(x.logo ?? ''),
+            message: String(x.message ?? ''),
             order: typeof x.order === 'number' ? x.order : 0,
           };
         }),
@@ -182,9 +185,11 @@ export async function batchSetStatus(items: { id: string; status: CongratStatus 
 
 export async function saveSettings(s: Settings): Promise<void> {
   // مفتاح تشغيل التسليط يُكتب فقط من زر «تسليط الضوء»؛ حفظ الإعدادات لا يلمسه حتى لا يُعيد تشغيله
-  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, ...rest } = s;
+  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, sponsorTriggerAt: _s, sponsorTriggerId: _i, ...rest } = s;
   void _t;
   void _p;
+  void _s;
+  void _i;
   await setDoc(doc(db, 'settings', 'global'), rest, { merge: true });
 }
 
@@ -192,13 +197,19 @@ export async function patchSettings(patch: Partial<Settings>): Promise<void> {
   await setDoc(doc(db, 'settings', 'global'), patch, { merge: true });
 }
 
-export async function saveAsset(name: 'logo' | 'background', dataUrl: string): Promise<void> {
+export async function saveAsset(name: AssetName, dataUrl: string): Promise<void> {
   await setDoc(doc(db, 'settings', name), { dataUrl, updatedAt: serverTimestamp() });
 }
 
 export async function triggerSpotlight(photoId: string): Promise<number> {
   const at = Date.now();
   await setDoc(doc(db, 'settings', 'global'), { spotlightTriggerAt: at, spotlightPhotoId: photoId }, { merge: true });
+  return at;
+}
+
+export async function triggerSponsor(partnerId: string): Promise<number> {
+  const at = Date.now();
+  await setDoc(doc(db, 'settings', 'global'), { sponsorTriggerAt: at, sponsorTriggerId: partnerId }, { merge: true });
   return at;
 }
 
@@ -246,7 +257,7 @@ export async function swapOrder(
 
 export async function savePartner(
   id: string | null,
-  data: { name: string; category: string; logo: string },
+  data: { name: string; category: string; logo: string; message: string },
   order: number,
 ): Promise<void> {
   if (id) await updateDoc(doc(db, 'partners', id), data);

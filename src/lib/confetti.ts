@@ -47,3 +47,13 @@ export function celebrateGuest(): void {
     /* تجاهل */
   }
 }
+
+/** قصاصات خفيفة من الزاويتين العلويتين لدخول شاشة الشريك */
+export function celebrateSoft(): void {
+  try {
+    confetti({ ...base(), particleCount: 45, spread: 70, origin: { x: 0.05, y: 0 }, angle: 300, startVelocity: 30 });
+    confetti({ ...base(), particleCount: 45, spread: 70, origin: { x: 0.95, y: 0 }, angle: 240, startVelocity: 30 });
+  } catch {
+    /* تجاهل */
+  }
+}

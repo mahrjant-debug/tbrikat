@@ -7,7 +7,7 @@ import { THEMES } from '../../lib/constants';
 import { fromLocalInput, toLocalInput } from '../../lib/dates';
 import { patchSettings, saveAsset, saveSettings } from '../../lib/db';
 import { handleFirestoreError } from '../../lib/firebase';
-import { BACKGROUND_OPTS, LOGO_OPTS, compressImage } from '../../lib/image';
+import { BACKGROUND_OPTS, LOGO_OPTS, PHOTO_OPTS, compressImage } from '../../lib/image';
 import type { Settings } from '../../lib/types';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -23,18 +23,21 @@ export function SettingsTab({
   settings,
   logo,
   customBg,
+  footerImg,
 }: {
   settings: Settings;
   logo: string;
   customBg: string;
+  footerImg: string;
 }) {
   const toast = useToast();
   const [draft, setDraft] = useState<Settings>(settings);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<'logo' | 'background' | null>(null);
+  const [uploading, setUploading] = useState<'logo' | 'background' | 'footer' | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
   const bgRef = useRef<HTMLInputElement>(null);
+  const footerRef = useRef<HTMLInputElement>(null);
 
   // لا نستبدل ما يكتبه المشرف بتحديث وارد من السحابة أثناء التعديل
   useEffect(() => {
@@ -61,21 +64,33 @@ export function SettingsTab({
   };
 
   /** رفع الشعار/الخلفية يُحفظ فوراً (وثيقة مستقلة حتى لا تثقل إعدادات هواتف الضيوف) */
-  const upload = async (kind: 'logo' | 'background', file: File | undefined) => {
+  const upload = async (kind: 'logo' | 'background' | 'footer', file: File | undefined) => {
     if (!file) return;
     setUploading(kind);
     try {
-      const dataUrl = await compressImage(file, kind === 'logo' ? LOGO_OPTS : BACKGROUND_OPTS);
+      const dataUrl = await compressImage(file, kind === 'logo' ? LOGO_OPTS : kind === 'footer' ? PHOTO_OPTS : BACKGROUND_OPTS);
       await saveAsset(kind, dataUrl);
-      const patch: Partial<Settings> = kind === 'logo' ? { hasLogo: true } : { backgroundMode: 'custom' };
+      const patch: Partial<Settings> =
+        kind === 'logo' ? { hasLogo: true } : kind === 'footer' ? { hasFooterImage: true } : { backgroundMode: 'custom' };
       await patchSettings(patch);
       setDraft((d) => ({ ...d, ...patch }));
-      toast.success(kind === 'logo' ? 'تم رفع الشعار' : 'تم رفع الخلفية');
+      toast.success(kind === 'logo' ? 'تم رفع الشعار' : kind === 'footer' ? 'تم رفع صورة التذييل' : 'تم رفع الخلفية');
     } catch (e) {
       handleFirestoreError('asset-upload', e);
       toast.error(e instanceof Error && !('code' in e) ? e.message : 'تعذّر رفع الصورة.');
     } finally {
       setUploading(null);
+    }
+  };
+
+  const removeFooterImage = async () => {
+    try {
+      await patchSettings({ hasFooterImage: false });
+      setDraft((d) => ({ ...d, hasFooterImage: false }));
+      toast.success('أُزيلت صورة التذييل');
+    } catch (e) {
+      handleFirestoreError('footer-remove', e);
+      toast.error('تعذّرت الإزالة.');
     }
   };
 
@@ -234,7 +249,82 @@ export function SettingsTab({
         <Toggle checked={draft.adaptiveDuration} onChange={(v) => set('adaptiveDuration', v)} label="التكيف مع طول النص" hint="تزداد المدة تلقائياً للتهاني الأطول من 25 كلمة" />
         <Toggle checked={draft.soundEnabled} onChange={(v) => set('soundEnabled', v)} label="صوت الاحتفال" hint="نغمة عند اعتماد تهنئة جديدة (تحتاج نقرة واحدة على شاشة العرض لتفعيل الصوت)" />
         <Toggle checked={draft.particlesEnabled} onChange={(v) => set('particlesEnabled', v)} label="الجزيئات الذهبية" />
-        <Toggle checked={draft.showPartners} onChange={(v) => set('showPartners', v)} label="إظهار شركاء النجاح" />
+      </Section>
+
+      <Section title="شاشة الشريك بملء الشاشة">
+        <div className="md:col-span-2">
+          <Toggle
+            checked={draft.sponsorEnabled}
+            onChange={(v) => set('sponsorEnabled', v)}
+            label="عرض شريك بملء الشاشة"
+            hint="كل فترة تظهر شاشة كاملة لشريك واحد بالتناوب، ثم يعود عرض التهاني. تنتظر انتهاء التهنئة الجديدة أو التسليط إن تزامنت معهما."
+          />
+        </div>
+        <Field label="تظهر كل كم دقيقة">
+          <Slider value={draft.sponsorIntervalMin} min={1} max={60} suffix=" د" onChange={(v) => set('sponsorIntervalMin', v)} />
+        </Field>
+        <Field label="مدة العرض">
+          <Slider value={draft.sponsorDurationSec} min={3} max={60} suffix=" ث" onChange={(v) => set('sponsorDurationSec', v)} />
+        </Field>
+        <Field label="عنوان الميدالية (ثابت لكل الشركاء)">
+          <input className={inputCls} value={draft.sponsorRibbon} maxLength={30} onChange={(e) => set('sponsorRibbon', e.target.value)} />
+        </Field>
+        <Field label="رقم الدورة (بجانب اسم المهرجان)" hint="مثل 28">
+          <input className={inputCls} value={draft.festivalNumber} maxLength={6} onChange={(e) => set('festivalNumber', e.target.value)} dir="ltr" />
+        </Field>
+        <div className="md:col-span-2">
+          <Field label="رسالة الشكر العامة" hint="تُعرض لكل الشركاء، ويمكن تخصيص رسالة لشريك بعينه من تبويب الشركاء. اكتب السنة يدوياً داخل النص.">
+            <textarea className={inputCls} rows={3} maxLength={300} value={draft.sponsorMessage} onChange={(e) => set('sponsorMessage', e.target.value)} />
+          </Field>
+        </div>
+        <Field label="معرّف التواصل في التذييل (إنستغرام)" hint="اتركه فارغاً لإخفائه">
+          <input className={inputCls} value={draft.sponsorFooterHandle} maxLength={40} onChange={(e) => set('sponsorFooterHandle', e.target.value)} dir="ltr" />
+        </Field>
+        <Field label="نص التذييل">
+          <input className={inputCls} value={draft.sponsorFooterText} maxLength={80} onChange={(e) => set('sponsorFooterText', e.target.value)} />
+        </Field>
+        <div>
+          <span className="mb-2 block text-sm font-bold text-ink">صورة دائرية في التذييل (اختيارية)</span>
+          <div className="flex items-center gap-3">
+            {draft.hasFooterImage && footerImg ? (
+              <img src={footerImg} alt="صورة التذييل" className="h-14 w-14 rounded-full border border-line object-cover" />
+            ) : null}
+            <input ref={footerRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void upload('footer', e.target.files?.[0]); e.target.value = ''; }} />
+            <Button variant="soft" disabled={uploading !== null} onClick={() => footerRef.current?.click()}>
+              {uploading === 'footer' ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />} {draft.hasFooterImage ? 'تغيير' : 'رفع صورة'}
+            </Button>
+            {draft.hasFooterImage ? (
+              <Button variant="ghost" onClick={() => void removeFooterImage()} aria-label="إزالة صورة التذييل">
+                <Trash2 size={16} />
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <span className="mb-2 block text-sm font-bold text-ink">الصندوق الصغير لشركاء النجاح في الشاشة الرئيسية</span>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="الصندوق الصغير للشركاء">
+            {(
+              [
+                ['off', 'مخفي'],
+                ['mobile', 'للجوال فقط'],
+                ['all', 'للجميع'],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={draft.partnersBox === v}
+                onClick={() => set('partnersBox', v)}
+                className={`rounded-xl border px-3 py-2 text-sm font-bold transition ${
+                  draft.partnersBox === v ? 'border-gold bg-accent-soft ring-2 ring-gold/40' : 'border-line bg-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </Section>
 
       <Section title="العدّ التنازلي">

@@ -62,6 +62,8 @@ export async function compressImage(file: File, opts: CompressOptions): Promise<
 
 export const PHOTO_OPTS: CompressOptions = { maxDim: 1200, maxBytes: 180 * 1024, format: 'jpeg' };
 export const BACKGROUND_OPTS: CompressOptions = { maxDim: 1600, maxBytes: 300 * 1024, format: 'jpeg' };
+/** شعارات الشركاء تُعرض كبيرة بملء الشاشة فتحتاج دقة أعلى */
+export const PARTNER_LOGO_OPTS: CompressOptions = { maxDim: 720, maxBytes: 160 * 1024, format: 'png' };
 export const LOGO_OPTS: CompressOptions = { maxDim: 360, maxBytes: 90 * 1024, format: 'png' };
 
 /**

@@ -9,6 +9,7 @@ import { Highlight } from '../components/display/Highlight';
 import { PartnersBox } from '../components/display/PartnersBox';
 import { PhotoStrip } from '../components/display/PhotoStrip';
 import { QrBox } from '../components/display/QrBox';
+import { SponsorSlide } from '../components/display/SponsorSlide';
 import { Spotlight } from '../components/display/Spotlight';
 import { getPreset } from '../data/backgrounds';
 import { useApprovedCongrats, useAsset, usePartners, usePhotos, useSettings } from '../hooks/useData';
@@ -18,7 +19,7 @@ import { FINALE_MS } from '../lib/constants';
 import { usePrefs } from '../lib/prefs';
 import { celebrateBurst } from '../lib/confetti';
 import { playCelebration, unlockAudio } from '../lib/sound';
-import type { Congrat, Photo } from '../lib/types';
+import type { Congrat, Partner, Photo } from '../lib/types';
 
 type Phase = 'normal' | 'countdown' | 'finale';
 const MAX_TIMEOUT = 2_000_000_000;
@@ -27,11 +28,19 @@ export default function Display() {
   const { settings, loaded } = useSettings();
   const logo = useAsset('logo');
   const customBg = useAsset('background');
+  const footerImg = useAsset('footer');
   const allPhotos = usePhotos();
   // صور بلا بيانات (من نظام قديم) لا تُعرض
   const photos = useMemo(() => allPhotos.filter((p) => p.dataUrl.startsWith('data:')), [allPhotos]);
   const partners = usePartners();
   const prefs = usePrefs();
+  const partnersRef = useRef<Partner[]>([]);
+  useEffect(() => {
+    partnersRef.current = partners;
+  }, [partners]);
+  // أي عرض بملء الشاشة يمنع الآخر (شريك / تسليط)
+  const sponsorActiveRef = useRef(false);
+  const spotActiveRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('normal');
   const phaseRef = useRef<Phase>('normal');
@@ -109,12 +118,13 @@ export default function Display() {
 
   const startSpotlight = useCallback((photoId?: string) => {
     const list = photosRef.current;
-    if (!list.length || phaseRef.current !== 'normal') return;
+    if (!list.length || phaseRef.current !== 'normal' || sponsorActiveRef.current) return;
     let photo = photoId ? list.find((p) => p.id === photoId) : undefined;
     if (!photo) {
       spotIndexRef.current = (spotIndexRef.current + 1) % list.length;
       photo = list[spotIndexRef.current];
     }
+    spotActiveRef.current = true;
     setSpot({ photo, key: Date.now() });
   }, []);
 
@@ -148,6 +158,73 @@ export default function Display() {
       }),
     [startSpotlight],
   );
+
+  // ---------- شاشة الشريك بملء الشاشة: كل N دقيقة لمدة D ثانية، شريك واحد بالتناوب ----------
+  const sponsorIndexRef = useRef(-1);
+  const [sponsor, setSponsor] = useState<{ partner: Partner; key: number } | null>(null);
+  /** null = لا طلب؛ '' = التالي بالتناوب؛ غير ذلك معرّف شريك محدد (طلب يدوي) */
+  const pendingSponsorRef = useRef<string | null>(null);
+
+  const trySponsor = useCallback(() => {
+    const want = pendingSponsorRef.current;
+    if (want === null) return;
+    const list = partnersRef.current;
+    if (!list.length) {
+      pendingSponsorRef.current = null;
+      return;
+    }
+    // ننتظر حتى تنتهي التهنئة البارزة أو التسليط أو العدّ التنازلي، ثم نعرض
+    if (phaseRef.current !== 'normal' || currentRef.current || spotActiveRef.current || sponsorActiveRef.current) return;
+    let partner = want ? list.find((p) => p.id === want) : undefined;
+    if (!partner) {
+      sponsorIndexRef.current = (sponsorIndexRef.current + 1) % list.length;
+      partner = list[sponsorIndexRef.current];
+    }
+    pendingSponsorRef.current = null;
+    sponsorActiveRef.current = true;
+    setSponsor({ partner, key: Date.now() });
+  }, []);
+
+  const { sponsorEnabled, sponsorIntervalMin } = settings;
+  useEffect(() => {
+    if (!sponsorEnabled) return;
+    const every = window.setInterval(() => {
+      if (pendingSponsorRef.current === null) pendingSponsorRef.current = '';
+    }, sponsorIntervalMin * 60_000);
+    const check = window.setInterval(trySponsor, 1000);
+    return () => {
+      window.clearInterval(every);
+      window.clearInterval(check);
+    };
+  }, [sponsorEnabled, sponsorIntervalMin, trySponsor]);
+
+  const lastSponsorTriggerRef = useRef<number | null>(null);
+  const { sponsorTriggerAt, sponsorTriggerId } = settings;
+  useEffect(() => {
+    if (!loaded) return;
+    if (lastSponsorTriggerRef.current === null) {
+      lastSponsorTriggerRef.current = sponsorTriggerAt;
+      return;
+    }
+    if (sponsorTriggerAt === lastSponsorTriggerRef.current) return;
+    lastSponsorTriggerRef.current = sponsorTriggerAt;
+    if (Date.now() - sponsorTriggerAt < 60_000) pendingSponsorRef.current = sponsorTriggerId;
+  }, [loaded, sponsorTriggerAt, sponsorTriggerId]);
+
+  useEffect(
+    () =>
+      onBus((msg) => {
+        if (msg.type !== 'sponsor') return;
+        lastSponsorTriggerRef.current = msg.at;
+        pendingSponsorRef.current = msg.partnerId;
+      }),
+    [],
+  );
+
+  const onSponsorDone = useCallback(() => {
+    sponsorActiveRef.current = false;
+    setSponsor(null);
+  }, []);
 
   // ---------- تهيئة الصفحة ----------
   useEffect(() => {
@@ -203,6 +280,9 @@ export default function Display() {
   const bgCover = settings.backgroundMode === 'custom';
   // المؤثرات الحركية والجزيئات تتبع نفس الخيار (إعدادات المشرف + زر «إخفاء الجزيئات» في الشريط)
   const fx = settings.particlesEnabled && !prefs.hideParticles;
+  // الصندوق الصغير للشركاء: مخفي افتراضياً، أو للجوال فقط، أو للجميع
+  const showBoxDesktop = settings.partnersBox === 'all' && partners.length > 0;
+  const showBoxMobile = settings.partnersBox !== 'off' && partners.length > 0;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -257,7 +337,7 @@ export default function Display() {
               <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} />
             )}
             <AnimatePresence>
-              {phase === 'normal' && highlight ? (
+              {phase === 'normal' && highlight && !sponsor ? (
                 <Highlight key={highlight.id} card={highlight} sound={sound} onDone={onHighlightDone} />
               ) : null}
             </AnimatePresence>
@@ -269,8 +349,10 @@ export default function Display() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
           >
-            <QrBox className="max-lg:order-5" compact={settings.showPartners && partners.length > 0} />
-            {settings.showPartners ? <PartnersBox className="max-lg:order-4" partners={partners} /> : null}
+            <QrBox className="max-lg:order-5" compact={showBoxDesktop} />
+            {showBoxMobile ? (
+              <PartnersBox className={`max-lg:order-4 ${settings.partnersBox === 'mobile' ? 'lg:hidden' : ''}`} partners={partners} />
+            ) : null}
           </motion.aside>
         </div>
 
@@ -296,7 +378,23 @@ export default function Display() {
             festival={settings.names}
             durationSec={durationSec}
             sound={sound}
-            onDone={() => setSpot(null)}
+            onDone={() => {
+              spotActiveRef.current = false;
+              setSpot(null);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {sponsor && phase === 'normal' ? (
+          <SponsorSlide
+            key={sponsor.key}
+            partner={sponsor.partner}
+            settings={settings}
+            festivalLogo={settings.hasLogo ? logo : ''}
+            footerImage={settings.hasFooterImage ? footerImg : ''}
+            onDone={onSponsorDone}
           />
         ) : null}
       </AnimatePresence>
