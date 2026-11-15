@@ -242,6 +242,9 @@ export default function Display() {
   /** null = لا طلب؛ '' = التالي بالتناوب؛ غير ذلك معرّف فيديو محدد (طلب يدوي) */
   const pendingVideoRef = useRef<string | null>(null);
 
+  /** عروض لاحقة لفيديو غير مجدول له تكرار: كل عنصر (فيديو، وقت استحقاق) */
+  const repeatQueueRef = useRef<{ id: string; at: number }[]>([]);
+
   const tryVideo = useCallback(() => {
     const list = videosRef.current;
     const now = Date.now();
@@ -256,7 +259,9 @@ export default function Display() {
         break;
       }
     }
-    const want = due ? due.id : pendingVideoRef.current;
+    // ثم تكرار فيديو غير مجدول حان وقته (يُحسب من بداية عرضه السابق)
+    const repeatDue = due ? undefined : repeatQueueRef.current.find((r) => r.at <= now && list.some((v) => v.id === r.id));
+    const want = due ? due.id : repeatDue ? repeatDue.id : pendingVideoRef.current;
     if (want === null) return;
     if (!list.length) {
       pendingVideoRef.current = null;
@@ -282,8 +287,19 @@ export default function Display() {
       videoIndexRef.current = (videoIndexRef.current + 1) % rotation.length;
       picked = rotation[videoIndexRef.current];
     }
-    if (due && picked.id === due.id) markScheduledPlayed(due.id, due.scheduleAt, dueIdx);
+    const fromSchedule = Boolean(due && picked.id === due.id);
+    const fromRepeat = Boolean(repeatDue && picked.id === repeatDue.id);
+    if (fromSchedule && due) markScheduledPlayed(due.id, due.scheduleAt, dueIdx);
+    else if (fromRepeat) repeatQueueRef.current = repeatQueueRef.current.filter((r) => r !== repeatDue);
     else pendingVideoRef.current = null;
+    // أول عرض لفيديو غير مجدول له تكرار (تناوب أو تشغيل يدوي): نجدول عروضه التالية
+    if (!fromSchedule && !fromRepeat && !picked.scheduleAt && picked.repeatCount > 1) {
+      const id = picked.id;
+      repeatQueueRef.current = repeatQueueRef.current.filter((r) => r.id !== id);
+      for (let k = 1; k < picked.repeatCount; k++) {
+        repeatQueueRef.current.push({ id, at: now + k * picked.repeatEveryMin * 60_000 });
+      }
+    }
     videoActiveRef.current = true;
     setVideo({ video: picked, key: Date.now() });
   }, []);
@@ -310,7 +326,10 @@ export default function Display() {
 
   const handleVideoCommand = useCallback(
     (id: string) => {
-      if (id === VIDEO_STOP) stopVideo();
+      if (id === VIDEO_STOP) {
+        repeatQueueRef.current = [];
+        stopVideo();
+      }
       else pendingVideoRef.current = id;
     },
     [stopVideo],
@@ -343,6 +362,7 @@ export default function Display() {
   // عند بدء العدّ التنازلي أو الاحتفال الختامي تُغلق كل العروض بملء الشاشة بدل أن تبقى حالتها عالقة
   useEffect(() => {
     if (phase === 'normal') return;
+    repeatQueueRef.current = [];
     if (videoActiveRef.current) stopVideo();
     if (sponsorActiveRef.current) onSponsorDone();
     if (spotActiveRef.current) {

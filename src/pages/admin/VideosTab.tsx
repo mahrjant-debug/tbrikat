@@ -65,15 +65,14 @@ function RepeatFields({
   onCount: (v: string) => void;
   onEvery: (v: string) => void;
 }) {
-  if (!when) return null;
   const many = Number(count) > 1;
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Field label="عدد مرات العرض" hint="1 = مرة واحدة فقط">
+      <Field label="عدد مرات العرض" hint={when ? '1 = مرة واحدة فقط' : 'كلما جاء دور الفيديو (بالتناوب أو بزر التشغيل) يُعرض هذا العدد من المرات. 1 = مرة'}>
         <input type="number" inputMode="numeric" min={1} max={100} step={1} dir="ltr" className={inputCls} value={count} onChange={(e) => onCount(e.target.value)} />
       </Field>
       {many ? (
-        <Field label="الفاصل بين كل عرض والتالي (دقائق)" hint="يُحسب من بداية العرض السابق">
+        <Field label="الفاصل بين كل عرض والتالي (دقائق)" hint={when ? 'يُحسب من بداية العرض السابق' : 'من بداية العرض السابق، ويتوقف التكرار بزر «إيقاف الفيديو الجاري». لا يُحفظ عند إعادة تحميل الشاشة'}>
           <input type="number" inputMode="numeric" min={1} max={1440} step={1} dir="ltr" className={inputCls} value={every} onChange={(e) => onEvery(e.target.value)} />
         </Field>
       ) : null}
@@ -358,7 +357,7 @@ function AddVideoForm({
         }
         if (check.status === 'ok' && !finalTitle) finalTitle = check.title;
       }
-      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt, durationSec, repeatCount: scheduleAt ? repeatCount : 1, repeatEveryMin }, order);
+      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt, durationSec, repeatCount, repeatEveryMin }, order);
       onDone();
     } catch (err) {
       handleFirestoreError('video-add', err);
@@ -452,7 +451,7 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
     setBusy(true);
     setError('');
     try {
-      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0, durationSec, repeatCount: when ? repeatCount : 1, repeatEveryMin });
+      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0, durationSec, repeatCount, repeatEveryMin });
       onDone();
     } catch (err) {
       handleFirestoreError('video-update', err);
@@ -555,6 +554,10 @@ function VideoRow({
             {next !== null ? 'يُعرض: ' : 'مضى موعده: '}
             {fmtSchedule(next ?? lastOccurrenceAt(v))}
             {v.repeatCount > 1 ? ` · ${v.repeatCount} مرات كل ${v.repeatEveryMin} د` : ''}
+          </div>
+        ) : v.repeatCount > 1 ? (
+          <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900">
+            يتكرر {v.repeatCount} مرات كل {v.repeatEveryMin} د
           </div>
         ) : null}
       </div>
