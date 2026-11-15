@@ -11,15 +11,16 @@ import { PhotoStrip } from '../components/display/PhotoStrip';
 import { QrBox } from '../components/display/QrBox';
 import { SponsorSlide } from '../components/display/SponsorSlide';
 import { Spotlight } from '../components/display/Spotlight';
+import { VideoOverlay } from '../components/display/VideoOverlay';
 import { getPreset } from '../data/backgrounds';
-import { useApprovedCongrats, useAsset, usePartners, usePhotos, useSettings } from '../hooks/useData';
+import { useApprovedCongrats, useAsset, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
 import { onBus } from '../lib/channel';
 import { hasCelebrated, markCelebrated } from '../lib/celebrated';
-import { FINALE_MS } from '../lib/constants';
+import { FINALE_MS, VIDEO_STOP } from '../lib/constants';
 import { usePrefs } from '../lib/prefs';
 import { celebrateBurst } from '../lib/confetti';
 import { playCelebration, unlockAudio } from '../lib/sound';
-import type { Congrat, Partner, Photo } from '../lib/types';
+import type { Congrat, Partner, Photo, Video } from '../lib/types';
 
 type Phase = 'normal' | 'countdown' | 'finale';
 const MAX_TIMEOUT = 2_000_000_000;
@@ -38,9 +39,10 @@ export default function Display() {
   useEffect(() => {
     partnersRef.current = partners;
   }, [partners]);
-  // أي عرض بملء الشاشة يمنع الآخر (شريك / تسليط)
+  // أي عرض بملء الشاشة يمنع الآخر (شريك / تسليط / فيديو)
   const sponsorActiveRef = useRef(false);
   const spotActiveRef = useRef(false);
+  const videoActiveRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('normal');
   const phaseRef = useRef<Phase>('normal');
@@ -118,7 +120,7 @@ export default function Display() {
 
   const startSpotlight = useCallback((photoId?: string) => {
     const list = photosRef.current;
-    if (!list.length || phaseRef.current !== 'normal' || sponsorActiveRef.current) return;
+    if (!list.length || phaseRef.current !== 'normal' || sponsorActiveRef.current || videoActiveRef.current) return;
     let photo = photoId ? list.find((p) => p.id === photoId) : undefined;
     if (!photo) {
       spotIndexRef.current = (spotIndexRef.current + 1) % list.length;
@@ -174,7 +176,7 @@ export default function Display() {
       return;
     }
     // ننتظر حتى تنتهي التهنئة البارزة أو التسليط أو العدّ التنازلي، ثم نعرض
-    if (phaseRef.current !== 'normal' || currentRef.current || spotActiveRef.current || sponsorActiveRef.current) return;
+    if (phaseRef.current !== 'normal' || currentRef.current || spotActiveRef.current || sponsorActiveRef.current || videoActiveRef.current) return;
     let partner = want ? list.find((p) => p.id === want) : undefined;
     if (!partner) {
       sponsorIndexRef.current = (sponsorIndexRef.current + 1) % list.length;
@@ -225,6 +227,108 @@ export default function Display() {
     sponsorActiveRef.current = false;
     setSponsor(null);
   }, []);
+
+  // ---------- فيديو يوتيوب بملء الشاشة: تلقائي كل N دقيقة بالتناوب، أو يدوي من لوحة المشرف ----------
+  const videos = useVideos();
+  const { config: videoCfg, loaded: videoCfgLoaded } = useVideoConfig();
+  const videosRef = useRef<Video[]>([]);
+  useEffect(() => {
+    videosRef.current = videos;
+  }, [videos]);
+  const videoIndexRef = useRef(-1);
+  const [video, setVideo] = useState<{ video: Video; key: number } | null>(null);
+  /** null = لا طلب؛ '' = التالي بالتناوب؛ غير ذلك معرّف فيديو محدد (طلب يدوي) */
+  const pendingVideoRef = useRef<string | null>(null);
+
+  const tryVideo = useCallback(() => {
+    const want = pendingVideoRef.current;
+    if (want === null) return;
+    const list = videosRef.current;
+    if (!list.length) {
+      pendingVideoRef.current = null;
+      return;
+    }
+    // ننتظر انتهاء التهنئة البارزة أو الشريك أو التسليط أو العدّ التنازلي، فلا تضيع تهنئة ولا يتداخل عرضان
+    if (
+      phaseRef.current !== 'normal' ||
+      currentRef.current ||
+      spotActiveRef.current ||
+      sponsorActiveRef.current ||
+      videoActiveRef.current
+    )
+      return;
+    let picked = want ? list.find((v) => v.id === want) : undefined;
+    if (!picked) {
+      videoIndexRef.current = (videoIndexRef.current + 1) % list.length;
+      picked = list[videoIndexRef.current];
+    }
+    pendingVideoRef.current = null;
+    videoActiveRef.current = true;
+    setVideo({ video: picked, key: Date.now() });
+  }, []);
+
+  const stopVideo = useCallback(() => {
+    pendingVideoRef.current = null;
+    videoActiveRef.current = false;
+    setVideo(null);
+  }, []);
+
+  useEffect(() => {
+    const check = window.setInterval(tryVideo, 1000);
+    return () => window.clearInterval(check);
+  }, [tryVideo]);
+
+  const { enabled: videoEnabled, intervalMin: videoIntervalMin } = videoCfg;
+  useEffect(() => {
+    if (!videoEnabled) return;
+    const every = window.setInterval(() => {
+      if (pendingVideoRef.current === null) pendingVideoRef.current = '';
+    }, videoIntervalMin * 60_000);
+    return () => window.clearInterval(every);
+  }, [videoEnabled, videoIntervalMin]);
+
+  const handleVideoCommand = useCallback(
+    (id: string) => {
+      if (id === VIDEO_STOP) stopVideo();
+      else pendingVideoRef.current = id;
+    },
+    [stopVideo],
+  );
+
+  const lastVideoTriggerRef = useRef<number | null>(null);
+  const { triggerAt: videoTriggerAt, triggerId: videoTriggerId } = videoCfg;
+  useEffect(() => {
+    if (!videoCfgLoaded) return;
+    if (lastVideoTriggerRef.current === null) {
+      lastVideoTriggerRef.current = videoTriggerAt;
+      return;
+    }
+    if (videoTriggerAt === lastVideoTriggerRef.current) return;
+    lastVideoTriggerRef.current = videoTriggerAt;
+    // لا نُشغّل أمراً قديماً وصل متأخراً (إعادة اتصال بعد انقطاع)
+    if (Date.now() - videoTriggerAt < 60_000) handleVideoCommand(videoTriggerId);
+  }, [videoCfgLoaded, videoTriggerAt, videoTriggerId, handleVideoCommand]);
+
+  useEffect(
+    () =>
+      onBus((msg) => {
+        if (msg.type !== 'video') return;
+        lastVideoTriggerRef.current = msg.at;
+        handleVideoCommand(msg.videoId);
+      }),
+    [handleVideoCommand],
+  );
+
+  // عند بدء العدّ التنازلي أو الاحتفال الختامي تُغلق كل العروض بملء الشاشة بدل أن تبقى حالتها عالقة
+  useEffect(() => {
+    if (phase === 'normal') return;
+    if (videoActiveRef.current) stopVideo();
+    if (sponsorActiveRef.current) onSponsorDone();
+    if (spotActiveRef.current) {
+      spotActiveRef.current = false;
+      setSpot(null);
+    }
+  }, [phase, stopVideo, onSponsorDone]);
 
   // ---------- تهيئة الصفحة ----------
   useEffect(() => {
@@ -337,7 +441,7 @@ export default function Display() {
               <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} />
             )}
             <AnimatePresence>
-              {phase === 'normal' && highlight && !sponsor ? (
+              {phase === 'normal' && highlight && !sponsor && !video ? (
                 <Highlight key={highlight.id} card={highlight} sound={sound} onDone={onHighlightDone} />
               ) : null}
             </AnimatePresence>
@@ -395,6 +499,12 @@ export default function Display() {
             footerImage={settings.hasFooterImage ? footerImg : ''}
             onDone={onSponsorDone}
           />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {video && phase === 'normal' ? (
+          <VideoOverlay key={video.key} video={video.video} muted={prefs.muted} maxMin={videoCfg.maxMin} onDone={stopVideo} />
         ) : null}
       </AnimatePresence>
     </div>

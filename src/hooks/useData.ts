@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_SETTINGS } from '../lib/defaults';
+import { DEFAULT_SETTINGS, DEFAULT_VIDEO_CONFIG } from '../lib/defaults';
 import {
   type AssetName,
   subscribeAllCongrats,
@@ -9,11 +9,13 @@ import {
   subscribePartners,
   subscribePhotos,
   subscribeSettings,
+  subscribeVideoConfig,
+  subscribeVideos,
 } from '../lib/db';
 import { compileWordList, type CompiledWordList } from '../lib/arabic';
 import { hasCelebrated } from '../lib/celebrated';
 import { RECENT_APPROVAL_MS } from '../lib/constants';
-import type { BannedWord, Congrat, Partner, Photo, Settings } from '../lib/types';
+import type { BannedWord, Congrat, Partner, Photo, Settings, Video, VideoConfig } from '../lib/types';
 
 /** كل الاشتراكات هنا بقائمة اعتماديات فارغة: لا إعادة اشتراك بسبب تغيّر حالة الواجهة. */
 
@@ -55,6 +57,18 @@ export function usePartners(): Partner[] {
   const [list, setList] = useState<Partner[]>([]);
   useEffect(() => subscribePartners(setList), []);
   return list;
+}
+
+export function useVideos(): Video[] {
+  const [list, setList] = useState<Video[]>([]);
+  useEffect(() => subscribeVideos(setList), []);
+  return list;
+}
+
+export function useVideoConfig(): { config: VideoConfig; loaded: boolean } {
+  const [state, setState] = useState({ config: DEFAULT_VIDEO_CONFIG, loaded: false });
+  useEffect(() => subscribeVideoConfig((config) => setState({ config, loaded: true })), []);
+  return state;
 }
 
 export function sortApproved(list: Congrat[]): Congrat[] {

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Bell, BellOff, Ban, Handshake, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, BellOff, Ban, Clapperboard, Handshake, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { ToastProvider } from '../components/ui';
 import { useAdminAccess } from '../hooks/useAdminAccess';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
-import { useAllCongrats, useAsset, useBannedWords, usePartners, usePhotos, useSettings } from '../hooks/useData';
+import { useAllCongrats, useAsset, useBannedWords, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
 import { logout, useAuth } from '../lib/auth';
 import { subscribeAdmins } from '../lib/db';
 import type { AdminProfile } from '../lib/types';
@@ -15,13 +15,15 @@ import { Login } from './admin/Login';
 import { PartnersTab } from './admin/PartnersTab';
 import { PhotosTab } from './admin/PhotosTab';
 import { SettingsTab } from './admin/SettingsTab';
+import { VideosTab } from './admin/VideosTab';
 
-type Tab = 'congrats' | 'banned' | 'photos' | 'partners' | 'admins' | 'settings';
+type Tab = 'congrats' | 'banned' | 'photos' | 'videos' | 'partners' | 'admins' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'congrats', label: 'التهاني', icon: Inbox },
   { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
   { id: 'photos', label: 'صور العرسان', icon: Images },
+  { id: 'videos', label: 'الفيديو', icon: Clapperboard },
   { id: 'banned', label: 'الكلمات المحظورة', icon: Ban },
   { id: 'admins', label: 'المشرفون', icon: Users },
   { id: 'settings', label: 'الإعدادات', icon: Settings2 },
@@ -89,6 +91,8 @@ function Panel({ me }: { me: AdminProfile }) {
   const { words, compiled } = useBannedWords();
   const photos = usePhotos();
   const partners = usePartners();
+  const videos = useVideos();
+  const { config: videoConfig } = useVideoConfig();
   const logo = useAsset('logo');
   const customBg = useAsset('background');
   const footerImg = useAsset('footer');
@@ -188,6 +192,7 @@ function Panel({ me }: { me: AdminProfile }) {
       {tab === 'banned' ? <BannedTab words={words} compiled={compiled} /> : null}
       {tab === 'photos' ? <PhotosTab photos={photos} /> : null}
       {tab === 'partners' ? <PartnersTab partners={partners} /> : null}
+      {tab === 'videos' ? <VideosTab videos={videos} config={videoConfig} /> : null}
       {tab === 'admins' ? <AdminsTab admins={admins} me={me} /> : null}
       {tab === 'settings' ? <SettingsTab settings={settings} logo={logo} customBg={customBg} footerImg={footerImg} /> : null}
     </main>

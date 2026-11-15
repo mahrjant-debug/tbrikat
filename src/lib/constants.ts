@@ -6,6 +6,8 @@ export const HIGHLIGHT_MS = 7_000;
 export const RECENT_APPROVAL_MS = 3 * 60 * 1000;
 export const FINALE_MS = 15_000;
 export const PARTNERS_ROTATE_MS = 5_000;
+/** قيمة triggerId لإيقاف الفيديو الجاري */
+export const VIDEO_STOP = '__stop__';
 
 export const QUICK_PHRASES: string[] = [
   'ألف مبروك للعرسان، بارك الله لكما وبارك عليكما وجمع بينكما في خير.',

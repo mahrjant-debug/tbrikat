@@ -19,8 +19,8 @@ import {
   type Unsubscribe,
 } from '@firebase/firestore';
 import { db, handleFirestoreError } from './firebase';
-import { normalizeSettings } from './defaults';
-import type { AdminProfile, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings } from './types';
+import { normalizeSettings, normalizeVideoConfig } from './defaults';
+import type { AdminProfile, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings, Video, VideoConfig } from './types';
 
 type Raw = Record<string, unknown>;
 
@@ -142,6 +142,31 @@ export function subscribePartners(cb: (list: Partner[]) => void): Unsubscribe {
   );
 }
 
+export function subscribeVideos(cb: (list: Video[]) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, 'videos'), orderBy('order', 'asc')),
+    (snap) =>
+      cb(
+        snap.docs.map((d) => {
+          const x = d.data({ serverTimestamps: 'estimate' }) as Raw;
+          return {
+            id: d.id,
+            title: String(x.title ?? ''),
+            videoId: String(x.videoId ?? ''),
+            start: typeof x.start === 'number' ? x.start : 0,
+            order: typeof x.order === 'number' ? x.order : 0,
+            createdAt: toMs(x.createdAt),
+          };
+        }),
+      ),
+    errCb('videos'),
+  );
+}
+
+export function subscribeVideoConfig(cb: (c: VideoConfig) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'settings', 'video'), (snap) => cb(normalizeVideoConfig(snap.data() as Raw | undefined)), errCb('videoConfig'));
+}
+
 // ---------------- كتابة: الضيوف ----------------
 
 export async function submitCongrat(name: string, text: string, status: CongratStatus): Promise<void> {
@@ -214,6 +239,29 @@ export async function triggerSponsor(partnerId: string): Promise<number> {
   return at;
 }
 
+export async function patchVideoConfig(patch: Partial<Pick<VideoConfig, 'enabled' | 'intervalMin' | 'maxMin'>>): Promise<void> {
+  await setDoc(doc(db, 'settings', 'video'), patch, { merge: true });
+}
+
+/** videoDocId: '' = التالي بالتناوب، VIDEO_STOP = إيقاف، وإلا معرّف فيديو محدد */
+export async function triggerVideo(videoDocId: string): Promise<number> {
+  const at = Date.now();
+  await setDoc(doc(db, 'settings', 'video'), { triggerAt: at, triggerId: videoDocId }, { merge: true });
+  return at;
+}
+
+export async function addVideo(data: { title: string; videoId: string; start: number }, order: number): Promise<void> {
+  await addDoc(collection(db, 'videos'), { ...data, order, createdAt: serverTimestamp() });
+}
+
+export async function updateVideoTitle(id: string, title: string): Promise<void> {
+  await updateDoc(doc(db, 'videos', id), { title });
+}
+
+export async function deleteVideo(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'videos', id));
+}
+
 export async function addBannedWords(words: string[]): Promise<void> {
   const batch = writeBatch(db);
   for (const word of words) batch.set(doc(collection(db, 'bannedWords')), { word, createdAt: serverTimestamp() });
@@ -246,7 +294,7 @@ export async function deleteAllPhotos(ids: string[]): Promise<void> {
 }
 
 export async function swapOrder(
-  coll: 'photos' | 'partners',
+  coll: 'photos' | 'partners' | 'videos',
   a: { id: string; order: number },
   b: { id: string; order: number },
 ): Promise<void> {

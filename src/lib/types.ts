@@ -91,6 +91,30 @@ export interface Partner {
   order: number;
 }
 
+/** فيديو يوتيوب يُعرض بملء الشاشة */
+export interface Video {
+  id: string;
+  title: string;
+  /** معرّف يوتيوب (11 حرفاً) */
+  videoId: string;
+  /** ثانية البدء، 0 = من البداية */
+  start: number;
+  order: number;
+  createdAt: number;
+}
+
+/** إعدادات الفيديو في وثيقة مستقلة settings/video حتى لا يطغى عليها حفظ الإعدادات العامة */
+export interface VideoConfig {
+  enabled: boolean;
+  intervalMin: number;
+  /** أقصى مدة للعرض بالدقائق، 0 = حتى ينتهي الفيديو */
+  maxMin: number;
+  /** يُحدَّث من لوحة المشرف لتشغيل/إيقاف فيديو الآن */
+  triggerAt: number;
+  /** '' = التالي بالتناوب، VIDEO_STOP = إيقاف، وإلا معرّف وثيقة الفيديو */
+  triggerId: string;
+}
+
 export interface BannedWord {
   id: string;
   word: string;
@@ -99,7 +123,8 @@ export interface BannedWord {
 export type BusMessage =
   | { type: 'approved'; cards: Congrat[] }
   | { type: 'spotlight'; photoId: string; at: number }
-  | { type: 'sponsor'; partnerId: string; at: number };
+  | { type: 'sponsor'; partnerId: string; at: number }
+  | { type: 'video'; videoId: string; at: number };
 
 export interface AdminProfile {
   /** بريد المشرف بأحرف صغيرة، وهو أيضاً معرّف الوثيقة */

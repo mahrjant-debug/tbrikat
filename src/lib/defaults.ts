@@ -1,4 +1,4 @@
-import type { Settings } from './types';
+import type { Settings, VideoConfig } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   wallTitle: 'جدارية التهاني والتبريكات',
@@ -39,6 +39,20 @@ export const DEFAULT_SETTINGS: Settings = {
   spotlightTriggerAt: 0,
   spotlightPhotoId: '',
 };
+
+export const DEFAULT_VIDEO_CONFIG: VideoConfig = { enabled: false, intervalMin: 15, maxMin: 0, triggerAt: 0, triggerId: '' };
+
+export function normalizeVideoConfig(raw: Record<string, unknown> | undefined): VideoConfig {
+  const d = DEFAULT_VIDEO_CONFIG;
+  if (!raw) return d;
+  return {
+    enabled: bool(raw.enabled, d.enabled),
+    intervalMin: num(raw.intervalMin, d.intervalMin, 1, 180),
+    maxMin: num(raw.maxMin, d.maxMin, 0, 180),
+    triggerAt: num(raw.triggerAt, 0, 0, Number.MAX_SAFE_INTEGER),
+    triggerId: str(raw.triggerId, ''),
+  };
+}
 
 function num(v: unknown, fallback: number, min: number, max: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
