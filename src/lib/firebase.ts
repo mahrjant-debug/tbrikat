@@ -2,9 +2,12 @@ import { initializeApp } from '@firebase/app';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from '@firebase/firestore';
+
+import { loadedAsAdmin } from './router';
 
 const env = import.meta.env;
 
@@ -24,7 +27,9 @@ export const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 /**
- * ذاكرة تخزين محلية دائمة (تقلل القراءات)، ودعم تعدد التبويبات،
+ * صفحات العرض والضيف: ذاكرة محلية دائمة (تقلل القراءات) مع دعم تعدد التبويبات.
+ * صفحة المشرف: ذاكرة مؤقتة فقط؛ فالتبويبات المتعددة تتشارك اتصالاً واحداً بهوية التبويب الرئيسي،
+ * فإن كان تبويب العرض (بلا تسجيل دخول) هو الرئيسي رُفضت طلبات تبويب المشرف في المتصفح نفسه.
  * وتجاهل الحقول undefined لأنها تُفشل الكتابة بخلاف ذلك.
  */
 const databaseId = env.VITE_FIREBASE_DATABASE_ID || '(default)';
@@ -32,7 +37,7 @@ const databaseId = env.VITE_FIREBASE_DATABASE_ID || '(default)';
 export const db = initializeFirestore(
   app,
   {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    localCache: loadedAsAdmin ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     ignoreUndefinedProperties: true,
   },
   databaseId,

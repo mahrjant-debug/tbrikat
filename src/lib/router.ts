@@ -10,6 +10,12 @@ export function pathToRoute(pathname: string): Route {
   return 'display';
 }
 
+/**
+ * هل حُمّلت الصفحة الحالية كصفحة مشرف؟ تُحسب مرة واحدة عند التحميل لأن نوع ذاكرة Firestore
+ * (انظر firebase.ts) يتحدد حينها؛ والتنقل بين المشرف وغيره يعيد تحميل الصفحة كاملة.
+ */
+export const loadedAsAdmin = typeof window !== 'undefined' && pathToRoute(window.location.pathname) === 'admin';
+
 export const ROUTE_PATHS: Record<Route, string> = {
   display: '/',
   guest: '/congratulate',
@@ -28,9 +34,20 @@ function subscribe(cb: () => void): () => void {
 export function navigate(route: Route): void {
   const path = ROUTE_PATHS[route];
   if (window.location.pathname !== path) {
+    if ((route === 'admin') !== loadedAsAdmin) {
+      window.location.assign(path);
+      return;
+    }
     window.history.pushState({}, '', path);
     window.dispatchEvent(new Event('cw:navigate'));
   }
+}
+
+// زر الرجوع/التقدّم بين المشرف وغيره: إعادة تحميل كاملة لنفس السبب
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if ((pathToRoute(window.location.pathname) === 'admin') !== loadedAsAdmin) window.location.reload();
+  });
 }
 
 export function useRoute(): Route {

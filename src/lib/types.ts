@@ -99,6 +99,8 @@ export interface Video {
   videoId: string;
   /** ثانية البدء، 0 = من البداية */
   start: number;
+  /** موعد عرض مستقل بالمللي ثانية؛ 0 = بلا موعد (يدخل في التناوب/التشغيل اليدوي) */
+  scheduleAt: number;
   order: number;
   createdAt: number;
 }

@@ -8,6 +8,8 @@ export const FINALE_MS = 15_000;
 export const PARTNERS_ROTATE_MS = 5_000;
 /** قيمة triggerId لإيقاف الفيديو الجاري */
 export const VIDEO_STOP = '__stop__';
+/** إن فُتحت الشاشة متأخرة عن موعد فيديو بأقل من هذه المدة يُعرض فور فتحها، وإلا يُعدّ فائتاً */
+export const VIDEO_SCHEDULE_GRACE_MS = 10 * 60_000;
 
 export const QUICK_PHRASES: string[] = [
   'ألف مبروك للعرسان، بارك الله لكما وبارك عليكما وجمع بينكما في خير.',

@@ -154,6 +154,7 @@ export function subscribeVideos(cb: (list: Video[]) => void): Unsubscribe {
             title: String(x.title ?? ''),
             videoId: String(x.videoId ?? ''),
             start: typeof x.start === 'number' ? x.start : 0,
+            scheduleAt: typeof x.scheduleAt === 'number' ? x.scheduleAt : 0,
             order: typeof x.order === 'number' ? x.order : 0,
             createdAt: toMs(x.createdAt),
           };
@@ -250,12 +251,12 @@ export async function triggerVideo(videoDocId: string): Promise<number> {
   return at;
 }
 
-export async function addVideo(data: { title: string; videoId: string; start: number }, order: number): Promise<void> {
+export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number }, order: number): Promise<void> {
   await addDoc(collection(db, 'videos'), { ...data, order, createdAt: serverTimestamp() });
 }
 
-export async function updateVideoTitle(id: string, title: string): Promise<void> {
-  await updateDoc(doc(db, 'videos', id), { title });
+export async function updateVideo(id: string, patch: { title: string; scheduleAt: number }): Promise<void> {
+  await updateDoc(doc(db, 'videos', id), patch);
 }
 
 export async function deleteVideo(id: string): Promise<void> {

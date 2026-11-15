@@ -1,12 +1,35 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, Loader2, Pencil, Play, Plus, Square, Trash2, Video as VideoIcon, Volume2 } from 'lucide-react';
 import { Button, ConfirmDialog, Field, Modal, Slider, Toggle, inputCls, useToast } from '../../components/ui';
 import { postBus } from '../../lib/channel';
 import { VIDEO_STOP } from '../../lib/constants';
-import { addVideo, deleteVideo, patchVideoConfig, swapOrder, triggerVideo, updateVideoTitle } from '../../lib/db';
+import { addVideo, deleteVideo, patchVideoConfig, swapOrder, triggerVideo, updateVideo } from '../../lib/db';
+import { fromLocalInput, toLocalInput } from '../../lib/dates';
 import { handleFirestoreError } from '../../lib/firebase';
 import type { Video, VideoConfig } from '../../lib/types';
 import { checkVideo, parseYouTube, thumbnailUrl } from '../../lib/youtube';
+
+function fmtSchedule(ms: number): string {
+  return new Date(ms).toLocaleString('ar', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function ScheduleField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <Field
+      label="موعد عرض مستقل (اختياري)"
+      hint="يُعرض هذا الفيديو وحده في هذا التاريخ والوقت (بتوقيت هذا الجهاز) ثم تعود الشاشة للتهاني. اتركه فارغاً ليدخل في التناوب أو التشغيل اليدوي"
+    >
+      <div className="flex items-center gap-2">
+        <input type="datetime-local" dir="ltr" className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} />
+        {value ? (
+          <Button variant="ghost" onClick={() => onChange('')}>
+            مسح
+          </Button>
+        ) : null}
+      </div>
+    </Field>
+  );
+}
 
 function fmtStart(sec: number): string {
   const h = Math.floor(sec / 3600);
@@ -72,7 +95,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
           checked={draft.enabled}
           onChange={(v) => setDraft((d) => ({ ...d, enabled: v }))}
           label="عرض الفيديوهات تلقائياً بالتناوب"
-          hint="يظهر فيديو بملء الشاشة كل فترة بالترتيب أدناه، وتنتظر التهاني الجديدة وتظهر بعد انتهائه"
+          hint="يظهر فيديو بملء الشاشة كل فترة بالترتيب أدناه، وتنتظر التهاني الجديدة وتظهر بعد انتهائه. الفيديوهات التي لها موعد مستقل لا تدخل في هذا التناوب"
         />
         <Field label="كل كم دقيقة؟">
           <Slider value={draft.intervalMin} min={1} max={60} suffix=" د" onChange={(v) => setDraft((d) => ({ ...d, intervalMin: v }))} />
@@ -120,6 +143,17 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
                     youtu.be/{v.videoId}
                     {v.start > 0 ? ` · يبدأ من ${fmtStart(v.start)}` : ''}
                   </div>
+                  {v.scheduleAt > 0 ? (
+                    <div
+                      className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                        v.scheduleAt > Date.now() ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <CalendarClock size={12} />
+                      {v.scheduleAt > Date.now() ? 'يُعرض: ' : 'مضى موعده: '}
+                      {fmtSchedule(v.scheduleAt)}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex items-center">
                   <button type="button" aria-label="تشغيل الآن على الشاشة" title="تشغيل الآن على الشاشة" onClick={() => void command(v.id, `أُرسل أمر تشغيل «${v.title || 'الفيديو'}» إلى شاشات العرض`)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
@@ -131,7 +165,7 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
                   <button type="button" aria-label="تأخير" disabled={i === videos.length - 1} onClick={() => void move(i, 1)} className="rounded-lg p-2 hover:bg-accent-soft disabled:opacity-30">
                     <ArrowDown size={16} />
                   </button>
-                  <button type="button" aria-label="تعديل العنوان" onClick={() => setEditing(v)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
+                  <button type="button" aria-label="تعديل" onClick={() => setEditing(v)} className="rounded-lg p-2 text-accent hover:bg-accent-soft">
                     <Pencil size={16} />
                   </button>
                   <button type="button" aria-label="حذف" onClick={() => setDeleting(v)} className="rounded-lg p-2 text-red-600 hover:bg-red-50">
@@ -158,9 +192,9 @@ export function VideosTab({ videos, config }: { videos: Video[]; config: VideoCo
         ) : null}
       </Modal>
 
-      <Modal open={editing !== null} onClose={() => setEditing(null)} title="تعديل عنوان الفيديو">
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="تعديل الفيديو">
         {editing ? (
-          <EditTitleForm
+          <EditVideoForm
             key={editing.id}
             video={editing}
             onCancel={() => setEditing(null)}
@@ -208,6 +242,7 @@ function AddVideoForm({
 }) {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
+  const [when, setWhen] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
@@ -218,6 +253,8 @@ function AddVideoForm({
     const parsed = parseYouTube(url);
     if ('error' in parsed) return setError(parsed.error);
     if (existing.some((v) => v.videoId === parsed.videoId)) return setError('هذا الفيديو مضاف بالفعل.');
+    const scheduleAt = fromLocalInput(when);
+    if (when && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
 
     setBusy(true);
     setError('');
@@ -233,7 +270,7 @@ function AddVideoForm({
         }
         if (check.status === 'ok' && !finalTitle) finalTitle = check.title;
       }
-      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start }, order);
+      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt }, order);
       onDone();
     } catch (err) {
       handleFirestoreError('video-add', err);
@@ -263,6 +300,7 @@ function AddVideoForm({
       <Field label="العنوان (اختياري)" hint="إن تركته فارغاً يُجلب عنوان الفيديو تلقائياً">
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoComplete="off" />
       </Field>
+      <ScheduleField value={when} onChange={setWhen} />
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
           {error}
@@ -289,21 +327,26 @@ function AddVideoForm({
   );
 }
 
-function EditTitleForm({ video, onCancel, onDone }: { video: Video; onCancel: () => void; onDone: () => void }) {
-  const toast = useToast();
+function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: () => void; onDone: () => void }) {
   const [title, setTitle] = useState(video.title);
+  const [when, setWhen] = useState(toLocalInput(video.scheduleAt));
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    const scheduleAt = fromLocalInput(when);
+    // الموعد الماضي مقبول فقط إن لم يتغير (فيديو فائت موعده)؛ أي تغيير يجب أن يكون في المستقبل
+    if (when && scheduleAt !== video.scheduleAt && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
     setBusy(true);
+    setError('');
     try {
-      await updateVideoTitle(video.id, title.trim().slice(0, 150));
+      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0 });
       onDone();
     } catch (err) {
-      handleFirestoreError('video-title', err);
-      toast.error('تعذّر الحفظ.');
+      handleFirestoreError('video-update', err);
+      setError('تعذّر الحفظ. تحقق من الاتصال وصلاحياتك.');
     } finally {
       setBusy(false);
     }
@@ -314,6 +357,12 @@ function EditTitleForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
       <Field label="العنوان">
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoFocus />
       </Field>
+      <ScheduleField value={when} onChange={setWhen} />
+      {error ? (
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+          {error}
+        </p>
+      ) : null}
       <div className="flex justify-end gap-2 pt-1">
         <Button variant="ghost" onClick={onCancel} disabled={busy}>
           إلغاء

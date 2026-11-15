@@ -16,7 +16,8 @@ import { getPreset } from '../data/backgrounds';
 import { useApprovedCongrats, useAsset, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
 import { onBus } from '../lib/channel';
 import { hasCelebrated, markCelebrated } from '../lib/celebrated';
-import { FINALE_MS, VIDEO_STOP } from '../lib/constants';
+import { FINALE_MS, VIDEO_SCHEDULE_GRACE_MS, VIDEO_STOP } from '../lib/constants';
+import { hasPlayedScheduled, markScheduledPlayed } from '../lib/videoPlayed';
 import { usePrefs } from '../lib/prefs';
 import { celebrateBurst } from '../lib/confetti';
 import { playCelebration, unlockAudio } from '../lib/sound';
@@ -241,9 +242,18 @@ export default function Display() {
   const pendingVideoRef = useRef<string | null>(null);
 
   const tryVideo = useCallback(() => {
-    const want = pendingVideoRef.current;
-    if (want === null) return;
     const list = videosRef.current;
+    const now = Date.now();
+    // فيديو حان موعده المستقل ولم يُعرض على هذا الجهاز بعد (له الأولوية على التناوب)
+    const due = list.find(
+      (v) =>
+        v.scheduleAt > 0 &&
+        now >= v.scheduleAt &&
+        now - v.scheduleAt < VIDEO_SCHEDULE_GRACE_MS &&
+        !hasPlayedScheduled(v.id, v.scheduleAt),
+    );
+    const want = due ? due.id : pendingVideoRef.current;
+    if (want === null) return;
     if (!list.length) {
       pendingVideoRef.current = null;
       return;
@@ -259,10 +269,17 @@ export default function Display() {
       return;
     let picked = want ? list.find((v) => v.id === want) : undefined;
     if (!picked) {
-      videoIndexRef.current = (videoIndexRef.current + 1) % list.length;
-      picked = list[videoIndexRef.current];
+      // التناوب التلقائي يشمل الفيديوهات بلا موعد فقط؛ ذات الموعد تُعرض في موعدها
+      const rotation = list.filter((v) => !v.scheduleAt);
+      if (!rotation.length) {
+        pendingVideoRef.current = null;
+        return;
+      }
+      videoIndexRef.current = (videoIndexRef.current + 1) % rotation.length;
+      picked = rotation[videoIndexRef.current];
     }
-    pendingVideoRef.current = null;
+    if (due && picked.id === due.id) markScheduledPlayed(due.id, due.scheduleAt);
+    else pendingVideoRef.current = null;
     videoActiveRef.current = true;
     setVideo({ video: picked, key: Date.now() });
   }, []);
