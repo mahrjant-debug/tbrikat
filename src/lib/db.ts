@@ -19,6 +19,7 @@ import {
   type Unsubscribe,
 } from '@firebase/firestore';
 import { db, handleFirestoreError } from './firebase';
+import { DISPLAY_MAX_CARDS } from './constants';
 import { normalizeSettings, normalizeVideoConfig } from './defaults';
 import type { AdminProfile, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings, Video, VideoConfig } from './types';
 
@@ -68,10 +69,10 @@ export function subscribeAsset(name: AssetName, cb: (dataUrl: string) => void): 
   );
 }
 
-export function subscribeBannedWords(cb: (words: BannedWord[]) => void): Unsubscribe {
+export function subscribeBannedWords(cb: (words: BannedWord[], fromCache: boolean) => void): Unsubscribe {
   return onSnapshot(
     collection(db, 'bannedWords'),
-    (snap) => cb(snap.docs.map((d) => ({ id: d.id, word: String((d.data() as Raw).word ?? '') }))),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, word: String((d.data() as Raw).word ?? '') })), snap.metadata.fromCache),
     errCb('bannedWords'),
   );
 }
@@ -79,7 +80,8 @@ export function subscribeBannedWords(cb: (words: BannedWord[]) => void): Unsubsc
 /** التهاني المعتمدة فقط (بدون فهرس مركّب؛ الترتيب في الواجهة) */
 export function subscribeApproved(cb: (list: Congrat[]) => void): Unsubscribe {
   return onSnapshot(
-    query(collection(db, 'congratulations'), where('status', '==', 'approved')),
+    // الأحدث اعتماداً فقط (يتطلب فهرس status + approvedAt)؛ يثبّت عدد القراءات لكل تحميل
+    query(collection(db, 'congratulations'), where('status', '==', 'approved'), orderBy('approvedAt', 'desc'), limit(DISPLAY_MAX_CARDS)),
     (snap) => cb(snap.docs.map(mapCongrat)),
     errCb('approved'),
   );
@@ -176,7 +178,10 @@ export function subscribeVideoConfig(cb: (c: VideoConfig) => void): Unsubscribe 
 // ---------------- كتابة: الضيوف ----------------
 
 export async function submitCongrat(name: string, text: string, status: CongratStatus): Promise<void> {
-  await addDoc(collection(db, 'congratulations'), { name, text, status, createdAt: serverTimestamp() });
+  // التهنئة المعتمدة عند الإنشاء (اعتماد تلقائي) تحمل approvedAt أيضاً ليظهر في استعلام الشاشة المرتّب
+  const data: Raw = { name, text, status, createdAt: serverTimestamp() };
+  if (status === 'approved') data.approvedAt = serverTimestamp();
+  await addDoc(collection(db, 'congratulations'), data);
 }
 
 // ---------------- كتابة: المشرف ----------------
@@ -217,12 +222,28 @@ export async function batchSetStatus(items: { id: string; status: CongratStatus 
 
 export async function saveSettings(s: Settings): Promise<void> {
   // مفتاح تشغيل التسليط يُكتب فقط من زر «تسليط الضوء»؛ حفظ الإعدادات لا يلمسه حتى لا يُعيد تشغيله
-  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, sponsorTriggerAt: _s, sponsorTriggerId: _i, ...rest } = s;
+  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, sponsorTriggerAt: _s, sponsorTriggerId: _i, bannedWords: _b, ...rest } = s;
+  void _b; // تُزامَن تلقائياً من تبويب الكلمات المحظورة، فلا تُكتب من مسودة الإعدادات
   void _t;
   void _p;
   void _s;
   void _i;
   await setDoc(doc(db, 'settings', 'global'), rest, { merge: true });
+}
+
+/** قراءة واحدة للإعدادات (بلا اشتراك حي): لصفحة الضيف حتى لا تُرسَل لها كل تعديلات الوثيقة */
+export async function fetchSettings(): Promise<Settings> {
+  const snap = await getDoc(doc(db, 'settings', 'global'));
+  return normalizeSettings(snap.data() as Raw | undefined);
+}
+
+/** تعبئة approvedAt للتهاني المعتمدة القديمة التي أُنشئت معتمدة دونه (تأخذ وقت إنشائها) */
+export async function backfillApprovedAt(items: { id: string; createdAt: number }[]): Promise<void> {
+  for (let i = 0; i < items.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const it of items.slice(i, i + 400)) batch.update(doc(db, 'congratulations', it.id), { approvedAt: Timestamp.fromMillis(it.createdAt) });
+    await batch.commit();
+  }
 }
 
 export async function patchSettings(patch: Partial<Settings>): Promise<void> {

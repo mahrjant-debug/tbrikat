@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spotlight: { enabled: false, intervalMin: 10, durationSec: 12 },
   spotlightTriggerAt: 0,
   spotlightPhotoId: '',
+  bannedWords: [],
 };
 
 export const DEFAULT_VIDEO_CONFIG: VideoConfig = { enabled: false, intervalMin: 15, maxMin: 0, triggerAt: 0, triggerId: '' };
@@ -116,5 +117,6 @@ export function normalizeSettings(raw: Record<string, unknown> | undefined): Set
     },
     spotlightTriggerAt: num(raw.spotlightTriggerAt, 0, 0, Number.MAX_SAFE_INTEGER),
     spotlightPhotoId: str(raw.spotlightPhotoId, ''),
+    bannedWords: Array.isArray(raw.bannedWords) ? raw.bannedWords.filter((w): w is string => typeof w === 'string') : [],
   };
 }

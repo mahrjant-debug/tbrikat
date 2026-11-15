@@ -70,6 +70,8 @@ export interface Settings {
   /** يُحدَّث من لوحة المشرف لتشغيل التسليط على الشاشات */
   spotlightTriggerAt: number;
   spotlightPhotoId: string;
+  /** نسخة مجمّعة من الكلمات المحظورة (تُزامَن من تبويب الكلمات) ليقرأها الضيف في قراءة واحدة */
+  bannedWords: string[];
 }
 
 export interface Photo {

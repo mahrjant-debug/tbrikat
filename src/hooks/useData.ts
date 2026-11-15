@@ -5,6 +5,7 @@ import {
   subscribeAllCongrats,
   subscribeApproved,
   subscribeAsset,
+  fetchSettings,
   subscribeBannedWords,
   subscribePartners,
   subscribePhotos,
@@ -32,19 +33,46 @@ export function useAsset(name: AssetName): string {
   return url;
 }
 
-export function useBannedWords(): { words: BannedWord[]; compiled: CompiledWordList; loaded: boolean } {
-  const [state, setState] = useState<{ words: BannedWord[]; compiled: CompiledWordList; loaded: boolean }>({
+export function useBannedWords(): { words: BannedWord[]; compiled: CompiledWordList; loaded: boolean; synced: boolean } {
+  const [state, setState] = useState<{ words: BannedWord[]; compiled: CompiledWordList; loaded: boolean; synced: boolean }>({
     words: [],
     compiled: { phrases: [] },
     loaded: false,
+    synced: false,
   });
   useEffect(
     () =>
-      subscribeBannedWords((words) =>
-        setState({ words, compiled: compileWordList(words.map((w) => w.word)), loaded: true }),
+      subscribeBannedWords((words, fromCache) =>
+        // synced = اللقطة من الخادم (لا من الكاش) فهي كاملة وآمنة للمزامنة
+        setState({ words, compiled: compileWordList(words.map((w) => w.word)), loaded: true, synced: !fromCache }),
       ),
     [],
   );
+  return state;
+}
+
+/** قراءة واحدة للإعدادات مع تحديث كل 10 دقائق عند العودة للصفحة (للضيوف: بلا اشتراك حي) */
+export function useSettingsOnce(): { settings: Settings; loaded: boolean } {
+  const [state, setState] = useState({ settings: DEFAULT_SETTINGS, loaded: false });
+  useEffect(() => {
+    let alive = true;
+    let last = 0;
+    const load = () => {
+      last = Date.now();
+      fetchSettings()
+        .then((settings) => alive && setState({ settings, loaded: true }))
+        .catch(() => alive && setState((p) => ({ ...p, loaded: true })));
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - last > 10 * 60_000) load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
   return state;
 }
 

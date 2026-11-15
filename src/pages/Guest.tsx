@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Clock, Loader2, MonitorPlay, PenLine, Send, ShieldCheck } from 'lucide-react';
 import { Particles } from '../components/Particles';
-import { useBannedWords, useSettings } from '../hooks/useData';
+import { useSettingsOnce } from '../hooks/useData';
+import { compileWordList } from '../lib/arabic';
 import { celebrateGuest } from '../lib/confetti';
 import { GUEST_COOLDOWN_MS, NAME_MAX, QUICK_PHRASES, TEXT_MAX } from '../lib/constants';
 import { submitCongrat } from '../lib/db';
@@ -21,8 +22,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | 'timeout'> {
 }
 
 export default function Guest() {
-  const { settings } = useSettings();
-  const { compiled } = useBannedWords();
+  // قراءة واحدة للإعدادات (والكلمات المحظورة داخلها): لا اشتراك حي ولا قراءة كلمة بكلمة
+  const { settings } = useSettingsOnce();
+  const compiled = useMemo(() => compileWordList(settings.bannedWords), [settings.bannedWords]);
   const [name, setName] = useState(() => safeStorage.get(NAME_KEY) ?? '');
   const [text, setText] = useState('');
   const [error, setError] = useState('');

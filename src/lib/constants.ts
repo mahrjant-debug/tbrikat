@@ -8,6 +8,8 @@ export const FINALE_MS = 15_000;
 export const PARTNERS_ROTATE_MS = 5_000;
 /** قيمة triggerId لإيقاف الفيديو الجاري */
 export const VIDEO_STOP = '__stop__';
+/** أقصى عدد تهانٍ معتمدة تقرأها شاشة العرض (الأحدث أولاً) — يثبّت عدد القراءات لكل تحميل مهما كثرت التهاني */
+export const DISPLAY_MAX_CARDS = 150;
 /** إن فُتحت الشاشة متأخرة عن موعد فيديو بأقل من هذه المدة يُعرض فور فتحها، وإلا يُعدّ فائتاً */
 export const VIDEO_SCHEDULE_GRACE_MS = 10 * 60_000;
 

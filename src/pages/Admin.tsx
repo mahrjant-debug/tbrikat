@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, BellOff, Ban, Clapperboard, Handshake, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { ToastProvider } from '../components/ui';
@@ -6,8 +6,8 @@ import { useAdminAccess } from '../hooks/useAdminAccess';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { useAllCongrats, useAsset, useBannedWords, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
 import { logout, useAuth } from '../lib/auth';
-import { subscribeAdmins } from '../lib/db';
-import type { AdminProfile } from '../lib/types';
+import { backfillApprovedAt, patchSettings, subscribeAdmins } from '../lib/db';
+import type { AdminProfile, Settings } from '../lib/types';
 import { AdminsTab } from './admin/AdminsTab';
 import { BannedTab } from './admin/BannedTab';
 import { CongratsTab } from './admin/CongratsTab';
@@ -83,19 +83,35 @@ function Gate({ email, displayName }: { email: string; displayName: string }) {
 /** لوحة التحكم: تُحمَّل بياناتها (اشتراكات واحدة ثابتة) بعد التحقق من الصلاحية فقط */
 function Panel({ me }: { me: AdminProfile }) {
   const [tab, setTab] = useState<Tab>('congrats');
-  const [admins, setAdmins] = useState<AdminProfile[]>([]);
-  useEffect(() => subscribeAdmins(setAdmins), []);
+  // تبويبات الصور/الشركاء/الفيديو/المشرفين/الإعدادات لا تشترك في بياناتها إلا عند فتحها أول مرة (ثم تبقى مشتركة دون إعادة قراءة)
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(['congrats']));
+  const openTab = (t: Tab) => {
+    setTab(t);
+    setVisited((v) => (v.has(t) ? v : new Set(v).add(t)));
+  };
   const alerts = useAdminAlerts();
-  const { list } = useAllCongrats(alerts.onArrived);
-  const { settings } = useSettings();
-  const { words, compiled } = useBannedWords();
-  const photos = usePhotos();
-  const partners = usePartners();
-  const videos = useVideos();
-  const { config: videoConfig } = useVideoConfig();
-  const logo = useAsset('logo');
-  const customBg = useAsset('background');
-  const footerImg = useAsset('footer');
+  const { list, loaded: congratsLoaded } = useAllCongrats(alerts.onArrived);
+  const { settings, loaded: settingsLoaded } = useSettings();
+  const { words, compiled, synced: bannedSynced } = useBannedWords();
+
+  // مزامنة الكلمات المحظورة إلى وثيقة الإعدادات (تقرؤها صفحة الضيف في قراءة واحدة)
+  useEffect(() => {
+    if (!bannedSynced || !settingsLoaded) return;
+    const want = Array.from(new Set(words.map((w) => w.word))).sort();
+    const have = [...settings.bannedWords].sort();
+    if (want.length === have.length && want.every((w, i) => w === have[i])) return;
+    const t = window.setTimeout(() => void patchSettings({ bannedWords: want }).catch(() => undefined), 1500);
+    return () => window.clearTimeout(t);
+  }, [words, bannedSynced, settingsLoaded, settings.bannedWords]);
+
+  // تعبئة approvedAt للتهاني المعتمدة القديمة (أُنشئت معتمدة دونه) كي تظهر في استعلام شاشة العرض المرتّب
+  const backfilledRef = useRef(false);
+  useEffect(() => {
+    if (!congratsLoaded || backfilledRef.current) return;
+    backfilledRef.current = true;
+    const missing = list.filter((c) => c.status === 'approved' && c.approvedAt === undefined);
+    if (missing.length) void backfillApprovedAt(missing.map((c) => ({ id: c.id, createdAt: c.createdAt }))).catch(() => undefined);
+  }, [congratsLoaded, list]);
 
   const pendingCount = list.filter((c) => c.status === 'pending').length;
 
@@ -173,7 +189,7 @@ function Panel({ me }: { me: AdminProfile }) {
               key={t.id}
               role="tab"
               aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => openTab(t.id)}
               className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${
                 tab === t.id ? 'bg-accent text-white' : 'text-ink hover:bg-accent-soft'
               }`}
@@ -190,11 +206,61 @@ function Panel({ me }: { me: AdminProfile }) {
 
       {tab === 'congrats' ? <CongratsTab list={list} banned={compiled} /> : null}
       {tab === 'banned' ? <BannedTab words={words} compiled={compiled} /> : null}
-      {tab === 'photos' ? <PhotosTab photos={photos} /> : null}
-      {tab === 'partners' ? <PartnersTab partners={partners} /> : null}
-      {tab === 'videos' ? <VideosTab videos={videos} config={videoConfig} /> : null}
-      {tab === 'admins' ? <AdminsTab admins={admins} me={me} /> : null}
-      {tab === 'settings' ? <SettingsTab settings={settings} logo={logo} customBg={customBg} footerImg={footerImg} /> : null}
+      {visited.has('photos') ? (
+        <div hidden={tab !== 'photos'}>
+          <PhotosPane />
+        </div>
+      ) : null}
+      {visited.has('partners') ? (
+        <div hidden={tab !== 'partners'}>
+          <PartnersPane />
+        </div>
+      ) : null}
+      {visited.has('videos') ? (
+        <div hidden={tab !== 'videos'}>
+          <VideosPane />
+        </div>
+      ) : null}
+      {visited.has('admins') ? (
+        <div hidden={tab !== 'admins'}>
+          <AdminsPane me={me} />
+        </div>
+      ) : null}
+      {visited.has('settings') ? (
+        <div hidden={tab !== 'settings'}>
+          <SettingsPane settings={settings} />
+        </div>
+      ) : null}
     </main>
   );
+}
+
+// كل غلاف يشترك في بياناته عند أول عرض له فقط (انظر visited أعلاه)
+function PhotosPane() {
+  const photos = usePhotos();
+  return <PhotosTab photos={photos} />;
+}
+
+function PartnersPane() {
+  const partners = usePartners();
+  return <PartnersTab partners={partners} />;
+}
+
+function VideosPane() {
+  const videos = useVideos();
+  const { config } = useVideoConfig();
+  return <VideosTab videos={videos} config={config} />;
+}
+
+function AdminsPane({ me }: { me: AdminProfile }) {
+  const [admins, setAdmins] = useState<AdminProfile[]>([]);
+  useEffect(() => subscribeAdmins(setAdmins), []);
+  return <AdminsTab admins={admins} me={me} />;
+}
+
+function SettingsPane({ settings }: { settings: Settings }) {
+  const logo = useAsset('logo');
+  const customBg = useAsset('background');
+  const footerImg = useAsset('footer');
+  return <SettingsTab settings={settings} logo={logo} customBg={customBg} footerImg={footerImg} />;
 }
