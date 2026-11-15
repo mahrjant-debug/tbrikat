@@ -375,7 +375,6 @@ export default function Display() {
             src={spot.photo.dataUrl}
             name={spot.photo.name}
             label={settings.photoLabel}
-            festival={settings.names}
             durationSec={durationSec}
             sound={sound}
             onDone={() => {

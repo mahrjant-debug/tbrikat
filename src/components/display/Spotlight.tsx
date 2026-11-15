@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { motion } from 'motion/react';
 import { celebrateBurst, celebrateFinale } from '../../lib/confetti';
 import { playCelebration } from '../../lib/sound';
@@ -36,7 +36,6 @@ export function Spotlight({
   src,
   name,
   label,
-  festival,
   durationSec,
   sound,
   onDone,
@@ -46,14 +45,11 @@ export function Spotlight({
   name: string;
   /** وصف الصورة مثل «العريس» */
   label: string;
-  /** اسم المهرجان/العرسان العام (يُعرض صغيراً) */
-  festival: string;
   durationSec: number;
   sound: boolean;
   onDone: () => void;
 }) {
   const [floaters] = useState(() => makeFloaters(26));
-  const words = name.split(/\s+/).filter(Boolean);
 
   useEffect(() => {
     celebrateBurst();
@@ -139,33 +135,23 @@ export function Spotlight({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
       >
-        {label ? (
-          <div className="font-cairo font-extrabold text-amber-200/90" style={{ fontSize: 'clamp(1rem, 3vmin, 2rem)' }}>
-            {label}
-          </div>
-        ) : null}
-        {name ? (
-          <h2 className="spot-name font-cairo font-black leading-tight" style={{ fontSize: 'clamp(2rem, 8vmin, 6rem)' }}>
-            {words.map((w, i) => (
-              <Fragment key={i}>
-                <motion.span
-                  className="inline-block"
-                  initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 1 + i * 0.18, type: 'spring', stiffness: 160, damping: 14 }}
-                >
-                  {w}
-                </motion.span>
-                {i < words.length - 1 ? ' ' : null}
-              </Fragment>
-            ))}
-          </h2>
-        ) : null}
-        {festival ? (
-          <div className="mt-[0.8vmin] font-cairo font-bold text-amber-100/80" style={{ fontSize: 'clamp(0.9rem, 2.6vmin, 1.7rem)' }}>
-            {festival}
-          </div>
-        ) : null}
+        {/* الوصف والاسم يظهران معاً دفعة واحدة (لا كلمة تسبق الاسم) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, delay: 1, type: 'spring', stiffness: 130, damping: 15 }}
+        >
+          {label ? (
+            <div className="font-cairo font-extrabold text-amber-200/90" style={{ fontSize: 'clamp(1rem, 3vmin, 2rem)' }}>
+              {label}
+            </div>
+          ) : null}
+          {name ? (
+            <h2 className="spot-name font-cairo font-black leading-tight" style={{ fontSize: 'clamp(2rem, 8vmin, 6rem)' }}>
+              {name}
+            </h2>
+          ) : null}
+        </motion.div>
       </motion.div>
     </motion.div>
   );
