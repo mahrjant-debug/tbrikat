@@ -1,7 +1,8 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 import { countWords } from '../../lib/arabic';
+import { mergeOrder } from '../../lib/cardOrder';
 import { LONG_TEXT_WORDS } from '../../lib/constants';
 import type { Congrat } from '../../lib/types';
 import { CongratCard } from './CongratCard';
@@ -41,8 +42,25 @@ function Dots({ index, total }: { index: number; total: number }) {
 const arrowCls =
   'absolute top-1/2 z-20 flex h-[2.8rem] w-[2.8rem] -translate-y-1/2 items-center justify-center rounded-full border border-line bg-white text-gold-deep shadow-md transition hover:scale-105 hover:bg-accent-soft';
 
-export const CardStage = memo(function CardStage({ cards, baseDuration, adaptive }: Props) {
+export const CardStage = memo(function CardStage({ cards: incoming, baseDuration, adaptive }: Props) {
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const currentIdRef = useRef<string | null>(null);
+  const orderRef = useRef<string[]>([]);
+
+  /**
+   * ترتيب العرض: التهاني المعتمدة بترتيب الاعتماد (الأقدم أولاً). والتهنئة التي تُعتمد الآن (خلال 3 دقائق)
+   * تدخل **بعد البطاقة الحالية مباشرة** فتكون التالية في الدوران بدل أن تنتظر آخر القائمة؛ وأي تهنئة قديمة
+   * تصل متأخرة (لقطة بدء ثانية مثلاً) توضع في موضعها الزمني. يبقى الترتيب ثابتاً بين اللقطات.
+   */
+  const cards = useMemo(() => {
+    const byId = new Map(incoming.map((c) => [c.id, c]));
+    const next = mergeOrder(orderRef.current, incoming, currentIdRef.current, Date.now());
+    orderRef.current = next;
+    return next.flatMap((id) => {
+      const c = byId.get(id);
+      return c ? [c] : [];
+    });
+  }, [incoming]);
   const cardsRef = useRef(cards);
   useEffect(() => {
     cardsRef.current = cards;
@@ -56,6 +74,9 @@ export const CardStage = memo(function CardStage({ cards, baseDuration, adaptive
   })();
   const current = index >= 0 ? cards[index] : null;
   const currentKey = current?.id ?? null;
+  useEffect(() => {
+    currentIdRef.current = currentKey;
+  });
 
   useEffect(() => {
     if (currentKey !== currentId) setCurrentId(currentKey);
