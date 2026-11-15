@@ -279,7 +279,7 @@ export default function Display() {
     let picked = want ? list.find((v) => v.id === want) : undefined;
     if (!picked) {
       // التناوب التلقائي يشمل الفيديوهات بلا موعد فقط؛ ذات الموعد تُعرض في موعدها
-      const rotation = list.filter((v) => !v.scheduleAt);
+      const rotation = list.filter((v) => !v.scheduleAt && !(v.repeatUntil > 0 && now > v.repeatUntil));
       if (!rotation.length) {
         pendingVideoRef.current = null;
         return;
@@ -297,7 +297,9 @@ export default function Display() {
       const id = picked.id;
       repeatQueueRef.current = repeatQueueRef.current.filter((r) => r.id !== id);
       for (let k = 1; k < picked.repeatCount; k++) {
-        repeatQueueRef.current.push({ id, at: now + k * picked.repeatEveryMin * 60_000 });
+        const at = now + k * picked.repeatEveryMin * 60_000;
+        if (picked.repeatUntil > 0 && at > picked.repeatUntil) break; // لا تكرار بعد تاريخ الانتهاء
+        repeatQueueRef.current.push({ id, at });
       }
     }
     videoActiveRef.current = true;

@@ -107,6 +107,8 @@ export interface Video {
   repeatCount: number;
   /** الفاصل بين كل عرض والتالي بالدقائق */
   repeatEveryMin: number;
+  /** تاريخ انتهاء عرض الفيديو بالمللي ثانية: لا عروض ولا تكرار بعده؛ 0 = بلا تاريخ */
+  repeatUntil: number;
   order: number;
   createdAt: number;
 }
