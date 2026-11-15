@@ -156,6 +156,8 @@ export function subscribeVideos(cb: (list: Video[]) => void): Unsubscribe {
             start: typeof x.start === 'number' ? x.start : 0,
             scheduleAt: typeof x.scheduleAt === 'number' ? x.scheduleAt : 0,
             durationSec: typeof x.durationSec === 'number' ? x.durationSec : 0,
+            repeatCount: typeof x.repeatCount === 'number' && x.repeatCount >= 1 ? x.repeatCount : 1,
+            repeatEveryMin: typeof x.repeatEveryMin === 'number' && x.repeatEveryMin >= 1 ? x.repeatEveryMin : 10,
             order: typeof x.order === 'number' ? x.order : 0,
             createdAt: toMs(x.createdAt),
           };
@@ -259,11 +261,11 @@ export async function setVideosOrder(ids: string[]): Promise<void> {
   await batch.commit();
 }
 
-export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number; durationSec: number }, order: number): Promise<void> {
+export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number; durationSec: number; repeatCount: number; repeatEveryMin: number }, order: number): Promise<void> {
   await addDoc(collection(db, 'videos'), { ...data, order, createdAt: serverTimestamp() });
 }
 
-export async function updateVideo(id: string, patch: { title: string; scheduleAt: number; durationSec: number }): Promise<void> {
+export async function updateVideo(id: string, patch: { title: string; scheduleAt: number; durationSec: number; repeatCount: number; repeatEveryMin: number }): Promise<void> {
   await updateDoc(doc(db, 'videos', id), patch);
 }
 

@@ -103,6 +103,10 @@ export interface Video {
   scheduleAt: number;
   /** مدة العرض بالثواني؛ 0 = حتى ينتهي الفيديو (أو الحد الأقصى العام) */
   durationSec: number;
+  /** عدد مرات عرض الفيديو المجدول (1 = مرة واحدة) */
+  repeatCount: number;
+  /** الفاصل بين كل عرض والتالي بالدقائق */
+  repeatEveryMin: number;
   order: number;
   createdAt: number;
 }

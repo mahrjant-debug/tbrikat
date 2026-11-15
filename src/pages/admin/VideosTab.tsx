@@ -8,6 +8,7 @@ import { addVideo, deleteVideo, patchVideoConfig, setVideosOrder, swapOrder, tri
 import { fromLocalInput, toLocalInput } from '../../lib/dates';
 import { handleFirestoreError } from '../../lib/firebase';
 import type { Video, VideoConfig } from '../../lib/types';
+import { lastOccurrenceAt, nextOccurrenceAt } from '../../lib/videoSchedule';
 import { checkVideo, parseYouTube, thumbnailUrl } from '../../lib/youtube';
 
 function fmtSchedule(ms: number): string {
@@ -49,6 +50,40 @@ function DurationField({ value, onChange }: { value: string; onChange: (v: strin
       />
     </Field>
   );
+}
+
+function RepeatFields({
+  when,
+  count,
+  every,
+  onCount,
+  onEvery,
+}: {
+  when: string;
+  count: string;
+  every: string;
+  onCount: (v: string) => void;
+  onEvery: (v: string) => void;
+}) {
+  if (!when) return null;
+  const many = Number(count) > 1;
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Field label="عدد مرات العرض" hint="1 = مرة واحدة فقط">
+        <input type="number" inputMode="numeric" min={1} max={100} step={1} dir="ltr" className={inputCls} value={count} onChange={(e) => onCount(e.target.value)} />
+      </Field>
+      {many ? (
+        <Field label="الفاصل بين كل عرض والتالي (دقائق)" hint="يُحسب من بداية العرض السابق">
+          <input type="number" inputMode="numeric" min={1} max={1440} step={1} dir="ltr" className={inputCls} value={every} onChange={(e) => onEvery(e.target.value)} />
+        </Field>
+      ) : null}
+    </div>
+  );
+}
+
+function parseRepeat(v: string, min: number, max: number): number | null {
+  const n = Math.round(Number(v));
+  return v.trim() !== '' && Number.isFinite(n) && n >= min && n <= max ? n : null;
 }
 
 /** نص الإدخال → ثوانٍ صحيحة (فارغ = 0)، أو null إن كان غير صالح */
@@ -288,6 +323,8 @@ function AddVideoForm({
   const [title, setTitle] = useState('');
   const [when, setWhen] = useState('');
   const [dur, setDur] = useState('');
+  const [rep, setRep] = useState('1');
+  const [repEvery, setRepEvery] = useState('10');
   const [showPreview, setShowPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -303,6 +340,9 @@ function AddVideoForm({
     if (when && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
     const durationSec = parseDuration(dur);
     if (durationSec === null) return setError('اكتب مدة صحيحة بالثواني (من 0 إلى 86400).');
+    const repeatCount = parseRepeat(rep, 1, 100);
+    const repeatEveryMin = parseRepeat(repEvery, 1, 1440);
+    if (repeatCount === null || repeatEveryMin === null) return setError('عدد مرات العرض من 1 إلى 100، والفاصل من 1 إلى 1440 دقيقة.');
 
     setBusy(true);
     setError('');
@@ -318,7 +358,7 @@ function AddVideoForm({
         }
         if (check.status === 'ok' && !finalTitle) finalTitle = check.title;
       }
-      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt, durationSec }, order);
+      await addVideo({ title: finalTitle.slice(0, 150), videoId: parsed.videoId, start: parsed.start, scheduleAt, durationSec, repeatCount: scheduleAt ? repeatCount : 1, repeatEveryMin }, order);
       onDone();
     } catch (err) {
       handleFirestoreError('video-add', err);
@@ -361,6 +401,7 @@ function AddVideoForm({
         );
       })()}
       <ScheduleField value={when} onChange={setWhen} />
+      <RepeatFields when={when} count={rep} every={repEvery} onCount={setRep} onEvery={setRepEvery} />
       <DurationField value={dur} onChange={setDur} />
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
@@ -392,6 +433,8 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
   const [title, setTitle] = useState(video.title);
   const [when, setWhen] = useState(toLocalInput(video.scheduleAt));
   const [dur, setDur] = useState(video.durationSec > 0 ? String(video.durationSec) : '');
+  const [rep, setRep] = useState(String(video.repeatCount));
+  const [repEvery, setRepEvery] = useState(String(video.repeatEveryMin));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -403,10 +446,13 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
     if (when && scheduleAt !== video.scheduleAt && scheduleAt <= Date.now()) return setError('اختر موعداً في المستقبل.');
     const durationSec = parseDuration(dur);
     if (durationSec === null) return setError('اكتب مدة صحيحة بالثواني (من 0 إلى 86400).');
+    const repeatCount = parseRepeat(rep, 1, 100);
+    const repeatEveryMin = parseRepeat(repEvery, 1, 1440);
+    if (repeatCount === null || repeatEveryMin === null) return setError('عدد مرات العرض من 1 إلى 100، والفاصل من 1 إلى 1440 دقيقة.');
     setBusy(true);
     setError('');
     try {
-      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0, durationSec });
+      await updateVideo(video.id, { title: title.trim().slice(0, 150), scheduleAt: when ? scheduleAt : 0, durationSec, repeatCount: when ? repeatCount : 1, repeatEveryMin });
       onDone();
     } catch (err) {
       handleFirestoreError('video-update', err);
@@ -422,6 +468,7 @@ function EditVideoForm({ video, onCancel, onDone }: { video: Video; onCancel: ()
         <input className={inputCls} value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} autoFocus />
       </Field>
       <ScheduleField value={when} onChange={setWhen} />
+      <RepeatFields when={when} count={rep} every={repEvery} onCount={setRep} onEvery={setRepEvery} />
       <DurationField value={dur} onChange={setDur} />
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
@@ -468,6 +515,7 @@ function VideoRow({
   onDelete: () => void;
 }) {
   const controls = useDragControls();
+  const next = nextOccurrenceAt(v, Date.now());
   return (
     <Reorder.Item
       value={v}
@@ -500,12 +548,13 @@ function VideoRow({
         {v.scheduleAt > 0 ? (
           <div
             className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-              v.scheduleAt > Date.now() ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
+              next !== null ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-600'
             }`}
           >
             <CalendarClock size={12} />
-            {v.scheduleAt > Date.now() ? 'يُعرض: ' : 'مضى موعده: '}
-            {fmtSchedule(v.scheduleAt)}
+            {next !== null ? 'يُعرض: ' : 'مضى موعده: '}
+            {fmtSchedule(next ?? lastOccurrenceAt(v))}
+            {v.repeatCount > 1 ? ` · ${v.repeatCount} مرات كل ${v.repeatEveryMin} د` : ''}
           </div>
         ) : null}
       </div>
