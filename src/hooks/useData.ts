@@ -6,6 +6,8 @@ import {
   subscribeApproved,
   subscribeAsset,
   fetchSettings,
+  subscribeAnnounceTrigger,
+  subscribeAnnouncements,
   subscribeBannedWords,
   subscribePartners,
   subscribePhotos,
@@ -17,7 +19,7 @@ import { compileWordList, type CompiledWordList } from '../lib/arabic';
 import { hasCelebrated } from '../lib/celebrated';
 import { newestFirst } from '../lib/cardOrder';
 import { RECENT_APPROVAL_MS } from '../lib/constants';
-import type { BannedWord, Congrat, Partner, Photo, Settings, Video, VideoConfig } from '../lib/types';
+import type { Announcement, BannedWord, Congrat, Partner, Photo, Settings, Video, VideoConfig } from '../lib/types';
 
 /** كل الاشتراكات هنا بقائمة اعتماديات فارغة: لا إعادة اشتراك بسبب تغيّر حالة الواجهة. */
 
@@ -86,6 +88,18 @@ export function usePartners(): Partner[] {
   const [list, setList] = useState<Partner[]>([]);
   useEffect(() => subscribePartners(setList), []);
   return list;
+}
+
+export function useAnnouncements(): Announcement[] {
+  const [list, setList] = useState<Announcement[]>([]);
+  useEffect(() => subscribeAnnouncements(setList), []);
+  return list;
+}
+
+export function useAnnounceTrigger(): { trigger: { at: number; id: string }; loaded: boolean } {
+  const [state, setState] = useState({ trigger: { at: 0, id: '' }, loaded: false });
+  useEffect(() => subscribeAnnounceTrigger((trigger) => setState({ trigger, loaded: true })), []);
+  return state;
 }
 
 export function useVideos(): Video[] {

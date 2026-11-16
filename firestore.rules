@@ -96,6 +96,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // إعلانات نصية: نص حتى 600 حرف (250 للشريط)، مدة 5..3600 ثانية
+    function validAnnouncement() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['title', 'text', 'style', 'mode', 'durationSec', 'repeatEveryMin', 'repeatUntil', 'createdAt'])
+        && d.keys().hasAll(['title', 'text', 'style', 'mode', 'durationSec', 'repeatEveryMin', 'repeatUntil', 'createdAt'])
+        && d.title is string && d.title.size() <= 80
+        && d.text is string && d.text.size() >= 1 && d.text.size() <= 600
+        && d.style in ['gold', 'emerald', 'alert', 'info']
+        && d.mode in ['full', 'banner']
+        && (d.mode == 'full' || d.text.size() <= 250)
+        && d.durationSec is number && d.durationSec >= 5 && d.durationSec <= 3600
+        && d.repeatEveryMin is number && d.repeatEveryMin >= 0 && d.repeatEveryMin <= 1440
+        && d.repeatUntil is number && d.repeatUntil >= 0;
+    }
+
+    match /announcements/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validAnnouncement();
+      allow delete: if isAdmin();
+    }
+
     // فيديوهات يوتيوب: معرّف الفيديو 11 حرفاً من [A-Za-z0-9_-]
     function validVideo() {
       let d = request.resource.data;

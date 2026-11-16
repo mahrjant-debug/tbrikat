@@ -94,6 +94,7 @@ export const thumbnailUrl = (videoId: string) => `https://i.ytimg.com/vi/${video
 /** الأجزاء التي نستخدمها فقط من واجهة YT */
 export interface YTPlayer {
   playVideo(): void;
+  pauseVideo(): void;
   mute(): void;
   unMute(): void;
   setVolume(v: number): void;

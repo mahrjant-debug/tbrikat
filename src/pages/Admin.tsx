@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Ban, Clapperboard, Handshake, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, BellOff, Ban, Clapperboard, Handshake, Megaphone, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { ToastProvider } from '../components/ui';
 import { useAdminAccess } from '../hooks/useAdminAccess';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
-import { useAllCongrats, useAsset, useBannedWords, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
+import { useAllCongrats, useAnnouncements, useAsset, useBannedWords, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
 import { logout, useAuth } from '../lib/auth';
 import { backfillApprovedAt, patchSettings, subscribeAdmins } from '../lib/db';
 import type { AdminProfile, Settings } from '../lib/types';
 import { AdminsTab } from './admin/AdminsTab';
+import { AnnouncementsTab } from './admin/AnnouncementsTab';
 import { BannedTab } from './admin/BannedTab';
 import { CongratsTab } from './admin/CongratsTab';
 import { Login } from './admin/Login';
@@ -17,11 +18,12 @@ import { PhotosTab } from './admin/PhotosTab';
 import { SettingsTab } from './admin/SettingsTab';
 import { VideosTab } from './admin/VideosTab';
 
-type Tab = 'congrats' | 'banned' | 'photos' | 'videos' | 'partners' | 'admins' | 'settings';
+type Tab = 'congrats' | 'banned' | 'photos' | 'videos' | 'partners' | 'announcements' | 'admins' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'congrats', label: 'التهاني', icon: Inbox },
   { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
+  { id: 'announcements', label: 'الإعلانات', icon: Megaphone },
   { id: 'photos', label: 'صور العرسان', icon: Images },
   { id: 'videos', label: 'الفيديو', icon: Clapperboard },
   { id: 'banned', label: 'الكلمات المحظورة', icon: Ban },
@@ -206,6 +208,11 @@ function Panel({ me }: { me: AdminProfile }) {
 
       {tab === 'congrats' ? <CongratsTab list={list} banned={compiled} /> : null}
       {tab === 'banned' ? <BannedTab words={words} compiled={compiled} /> : null}
+      {visited.has('announcements') ? (
+        <div hidden={tab !== 'announcements'}>
+          <AnnouncementsPane />
+        </div>
+      ) : null}
       {visited.has('photos') ? (
         <div hidden={tab !== 'photos'}>
           <PhotosPane />
@@ -236,6 +243,11 @@ function Panel({ me }: { me: AdminProfile }) {
 }
 
 // كل غلاف يشترك في بياناته عند أول عرض له فقط (انظر visited أعلاه)
+function AnnouncementsPane() {
+  const announcements = useAnnouncements();
+  return <AnnouncementsTab announcements={announcements} />;
+}
+
 function PhotosPane() {
   const photos = usePhotos();
   return <PhotosTab photos={photos} />;

@@ -21,7 +21,7 @@ import {
 import { db, handleFirestoreError } from './firebase';
 import { DISPLAY_MAX_CARDS } from './constants';
 import { normalizeSettings, normalizeVideoConfig } from './defaults';
-import type { AdminProfile, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings, Video, VideoConfig } from './types';
+import type { AdminProfile, Announcement, AnnouncementInput, BannedWord, Congrat, CongratStatus, Partner, Photo, Settings, Video, VideoConfig } from './types';
 
 type Raw = Record<string, unknown>;
 
@@ -175,6 +175,43 @@ export function subscribeVideoConfig(cb: (c: VideoConfig) => void): Unsubscribe 
   return onSnapshot(doc(db, 'settings', 'video'), (snap) => cb(normalizeVideoConfig(snap.data() as Raw | undefined)), errCb('videoConfig'));
 }
 
+export function subscribeAnnouncements(cb: (list: Announcement[]) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, 'announcements'), orderBy('createdAt', 'asc')),
+    (snap) =>
+      cb(
+        snap.docs.map((d) => {
+          const x = d.data({ serverTimestamps: 'estimate' }) as Raw;
+          const style = x.style;
+          return {
+            id: d.id,
+            title: String(x.title ?? ''),
+            text: String(x.text ?? ''),
+            style: style === 'emerald' || style === 'alert' || style === 'info' ? style : 'gold',
+            mode: x.mode === 'banner' ? 'banner' : 'full',
+            durationSec: typeof x.durationSec === 'number' ? x.durationSec : 30,
+            repeatEveryMin: typeof x.repeatEveryMin === 'number' ? x.repeatEveryMin : 0,
+            repeatUntil: typeof x.repeatUntil === 'number' ? x.repeatUntil : 0,
+            createdAt: toMs(x.createdAt),
+          } satisfies Announcement;
+        }),
+      ),
+    errCb('announcements'),
+  );
+}
+
+/** أمر نشر/سحب إعلان: وثيقة صغيرة مستقلة (settings/announce) */
+export function subscribeAnnounceTrigger(cb: (t: { at: number; id: string }) => void): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'settings', 'announce'),
+    (snap) => {
+      const x = (snap.data() ?? {}) as Raw;
+      cb({ at: typeof x.triggerAt === 'number' ? x.triggerAt : 0, id: typeof x.triggerId === 'string' ? x.triggerId : '' });
+    },
+    errCb('announceTrigger'),
+  );
+}
+
 // ---------------- كتابة: الضيوف ----------------
 
 export async function submitCongrat(name: string, text: string, status: CongratStatus): Promise<void> {
@@ -282,6 +319,25 @@ export async function setVideosOrder(ids: string[]): Promise<void> {
   const batch = writeBatch(db);
   ids.forEach((id, i) => batch.update(doc(db, 'videos', id), { order: i + 1 }));
   await batch.commit();
+}
+
+export async function addAnnouncement(data: AnnouncementInput): Promise<void> {
+  await addDoc(collection(db, 'announcements'), { ...data, createdAt: serverTimestamp() });
+}
+
+export async function updateAnnouncement(id: string, data: AnnouncementInput): Promise<void> {
+  await updateDoc(doc(db, 'announcements', id), { ...data });
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'announcements', id));
+}
+
+/** announcementId = معرّف الإعلان، أو ANNOUNCE_STOP لسحب الجاري */
+export async function triggerAnnouncement(announcementId: string): Promise<number> {
+  const at = Date.now();
+  await setDoc(doc(db, 'settings', 'announce'), { triggerAt: at, triggerId: announcementId }, { merge: true });
+  return at;
 }
 
 export async function addVideo(data: { title: string; videoId: string; start: number; scheduleAt: number; durationSec: number; repeatCount: number; repeatEveryMin: number; repeatUntil: number }, order: number): Promise<void> {

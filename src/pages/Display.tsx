@@ -11,18 +11,29 @@ import { PhotoStrip } from '../components/display/PhotoStrip';
 import { QrBox } from '../components/display/QrBox';
 import { SponsorSlide } from '../components/display/SponsorSlide';
 import { Spotlight } from '../components/display/Spotlight';
+import { AnnouncementBanner, AnnouncementFull } from '../components/display/AnnouncementView';
 import { VideoOverlay } from '../components/display/VideoOverlay';
 import { getPreset } from '../data/backgrounds';
-import { useApprovedCongrats, useAsset, usePartners, usePhotos, useSettings, useVideoConfig, useVideos } from '../hooks/useData';
+import {
+  useAnnounceTrigger,
+  useAnnouncements,
+  useApprovedCongrats,
+  useAsset,
+  usePartners,
+  usePhotos,
+  useSettings,
+  useVideoConfig,
+  useVideos,
+} from '../hooks/useData';
 import { onBus } from '../lib/channel';
 import { hasCelebrated, markCelebrated } from '../lib/celebrated';
-import { FINALE_MS, VIDEO_STOP } from '../lib/constants';
+import { ANNOUNCE_STOP, FINALE_MS, VIDEO_STOP } from '../lib/constants';
 import { dueOccurrence } from '../lib/videoSchedule';
 import { hasPlayedScheduled, markScheduledPlayed } from '../lib/videoPlayed';
 import { usePrefs } from '../lib/prefs';
 import { celebrateBurst } from '../lib/confetti';
 import { playCelebration, unlockAudio } from '../lib/sound';
-import type { Congrat, Partner, Photo, Video } from '../lib/types';
+import type { Announcement, Congrat, Partner, Photo, Video } from '../lib/types';
 
 type Phase = 'normal' | 'countdown' | 'finale';
 const MAX_TIMEOUT = 2_000_000_000;
@@ -45,6 +56,8 @@ export default function Display() {
   const sponsorActiveRef = useRef(false);
   const spotActiveRef = useRef(false);
   const videoActiveRef = useRef(false);
+  /** إعلان بملء الشاشة ظاهر الآن: يمنع بدء شريك/تسليط/فيديو ويؤجّل الاحتفاء بالتهنئة */
+  const annFullRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('normal');
   const phaseRef = useRef<Phase>('normal');
@@ -122,7 +135,7 @@ export default function Display() {
 
   const startSpotlight = useCallback((photoId?: string) => {
     const list = photosRef.current;
-    if (!list.length || phaseRef.current !== 'normal' || sponsorActiveRef.current || videoActiveRef.current) return;
+    if (!list.length || phaseRef.current !== 'normal' || sponsorActiveRef.current || videoActiveRef.current || annFullRef.current) return;
     let photo = photoId ? list.find((p) => p.id === photoId) : undefined;
     if (!photo) {
       spotIndexRef.current = (spotIndexRef.current + 1) % list.length;
@@ -178,7 +191,7 @@ export default function Display() {
       return;
     }
     // ننتظر حتى تنتهي التهنئة البارزة أو التسليط أو العدّ التنازلي، ثم نعرض
-    if (phaseRef.current !== 'normal' || currentRef.current || spotActiveRef.current || sponsorActiveRef.current || videoActiveRef.current) return;
+    if (phaseRef.current !== 'normal' || currentRef.current || spotActiveRef.current || sponsorActiveRef.current || videoActiveRef.current || annFullRef.current) return;
     let partner = want ? list.find((p) => p.id === want) : undefined;
     if (!partner) {
       sponsorIndexRef.current = (sponsorIndexRef.current + 1) % list.length;
@@ -274,7 +287,8 @@ export default function Display() {
       currentRef.current ||
       spotActiveRef.current ||
       sponsorActiveRef.current ||
-      videoActiveRef.current
+      videoActiveRef.current ||
+      annFullRef.current
     )
       return;
     let picked = want ? list.find((v) => v.id === want) : undefined;
@@ -380,6 +394,101 @@ export default function Display() {
       setSpot(null);
     }
   }, [phase, stopVideo, onSponsorDone]);
+
+  // ---------- الإعلانات النصية: تظهر فوراً (ملء الشاشة أو شريط) لمدة محددة، وقد تتكرر حتى وقت انتهاء ----------
+  const announcements = useAnnouncements();
+  const { trigger: annTrigger, loaded: annTriggerLoaded } = useAnnounceTrigger();
+  const annsRef = useRef<Announcement[]>([]);
+  const [ann, setAnn] = useState<{ a: Announcement; key: number } | null>(null);
+  const annRepeatRef = useRef<{ id: string; at: number } | null>(null);
+  /** أمر وصل قبل أن تصل وثيقة الإعلان نفسها (إنشاء ثم نشر فوري): يُنفَّذ عند وصولها خلال 5 ثوانٍ */
+  const annPendingRef = useRef<{ id: string; at: number } | null>(null);
+
+  const endAnn = useCallback(() => {
+    annFullRef.current = false;
+    setAnn(null);
+  }, []);
+
+  const startAnn = useCallback((a: Announcement) => {
+    annFullRef.current = a.mode === 'full';
+    setAnn({ a, key: Date.now() });
+    const next = a.repeatEveryMin > 0 && a.repeatUntil > 0 ? Date.now() + a.repeatEveryMin * 60_000 : 0;
+    annRepeatRef.current = next > 0 && next <= a.repeatUntil ? { id: a.id, at: next } : null;
+  }, []);
+
+  const handleAnnounce = useCallback(
+    (id: string) => {
+      if (id === ANNOUNCE_STOP) {
+        annRepeatRef.current = null;
+        annPendingRef.current = null;
+        endAnn();
+        return;
+      }
+      const a = annsRef.current.find((x) => x.id === id);
+      if (a) startAnn(a);
+      else annPendingRef.current = { id, at: Date.now() };
+    },
+    [endAnn, startAnn],
+  );
+
+  useEffect(() => {
+    annsRef.current = announcements;
+    const p = annPendingRef.current;
+    if (p && Date.now() - p.at < 5000) {
+      const a = announcements.find((x) => x.id === p.id);
+      if (a) {
+        annPendingRef.current = null;
+        startAnn(a);
+      }
+    }
+    // حُذف الإعلان الظاهر: يُسحب فوراً
+    if (ann && !announcements.some((x) => x.id === ann.a.id)) {
+      annRepeatRef.current = null;
+      endAnn();
+    }
+  }, [announcements, ann, startAnn, endAnn]);
+
+  useEffect(() => {
+    if (!ann) return;
+    const t = window.setTimeout(endAnn, ann.a.durationSec * 1000);
+    return () => window.clearTimeout(t);
+  }, [ann, endAnn]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const r = annRepeatRef.current;
+      if (!r || Date.now() < r.at) return;
+      annRepeatRef.current = null;
+      const a = annsRef.current.find((x) => x.id === r.id);
+      if (a) startAnn(a);
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, [startAnn]);
+
+  const lastAnnTriggerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!annTriggerLoaded) return;
+    if (lastAnnTriggerRef.current === null) {
+      lastAnnTriggerRef.current = annTrigger.at;
+      return;
+    }
+    if (annTrigger.at === lastAnnTriggerRef.current) return;
+    lastAnnTriggerRef.current = annTrigger.at;
+    // لا نُظهر أمراً قديماً وصل متأخراً (إعادة اتصال بعد انقطاع)
+    if (Date.now() - annTrigger.at < 60_000) handleAnnounce(annTrigger.id);
+  }, [annTriggerLoaded, annTrigger.at, annTrigger.id, handleAnnounce]);
+
+  useEffect(
+    () =>
+      onBus((msg) => {
+        if (msg.type !== 'announce') return;
+        lastAnnTriggerRef.current = msg.at;
+        handleAnnounce(msg.id);
+      }),
+    [handleAnnounce],
+  );
+
+  const annFull = ann !== null && ann.a.mode === 'full';
 
   // ---------- تهيئة الصفحة ----------
   useEffect(() => {
@@ -489,10 +598,10 @@ export default function Display() {
             ) : phase === 'finale' ? (
               <FinalePanel title={cdTitle} sound={sound} />
             ) : (
-              <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} paused={video !== null || sponsor !== null || spot !== null} />
+              <CardStage cards={cards} baseDuration={settings.displayDuration} adaptive={settings.adaptiveDuration} paused={video !== null || sponsor !== null || spot !== null || annFull} />
             )}
             <AnimatePresence>
-              {phase === 'normal' && highlight && !sponsor && !video ? (
+              {phase === 'normal' && highlight && !sponsor && !video && !annFull ? (
                 <Highlight key={highlight.id} card={highlight} sound={sound} onDone={onHighlightDone} />
               ) : null}
             </AnimatePresence>
@@ -555,7 +664,41 @@ export default function Display() {
 
       <AnimatePresence>
         {video && phase === 'normal' ? (
-          <VideoOverlay key={video.key} video={video.video} muted={prefs.muted} maxSec={video.video.durationSec > 0 ? video.video.durationSec : videoCfg.maxMin * 60} onDone={stopVideo} onStop={() => handleVideoCommand(VIDEO_STOP)} />
+          <VideoOverlay key={video.key} video={video.video} muted={prefs.muted} maxSec={video.video.durationSec > 0 ? video.video.durationSec : videoCfg.maxMin * 60} paused={annFull} onDone={stopVideo} onStop={() => handleVideoCommand(VIDEO_STOP)} />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {ann && ann.a.mode === 'full' ? (
+          <motion.div
+            key={ann.key}
+            className="fixed inset-0 z-[140]"
+            initial={{ opacity: 0, scale: 1.03 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            role="alert"
+            aria-label={ann.a.title || 'إعلان'}
+          >
+            <AnnouncementFull title={ann.a.title} text={ann.a.text} style={ann.a.style} durationSec={ann.a.durationSec} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {ann && ann.a.mode === 'banner' ? (
+          <motion.div
+            key={ann.key}
+            className="fixed inset-x-0 top-0 z-[135]"
+            initial={{ y: '-100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '-100%' }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            role="alert"
+            aria-label={ann.a.title || 'إعلان'}
+          >
+            <AnnouncementBanner title={ann.a.title} text={ann.a.text} style={ann.a.style} durationSec={ann.a.durationSec} />
+          </motion.div>
         ) : null}
       </AnimatePresence>
     </div>

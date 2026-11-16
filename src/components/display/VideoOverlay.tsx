@@ -16,6 +16,7 @@ export function VideoOverlay({
   video,
   muted,
   maxSec,
+  paused,
   onDone,
   onStop,
 }: {
@@ -24,6 +25,8 @@ export function VideoOverlay({
   muted: boolean;
   /** أقصى مدة عرض بالثواني تُحسب من لحظة بدء التشغيل؛ 0 = حتى ينتهي الفيديو */
   maxSec: number;
+  /** إيقاف مؤقت (أثناء إعلان بملء الشاشة): يتوقف الفيديو والعدّاد ويُستأنف بعده */
+  paused: boolean;
   onDone: () => void;
   /** إيقاف يدوي من الشاشة نفسها (زر أو Esc): يلغي أيضاً التكرارات المتبقية */
   onStop: () => void;
@@ -31,6 +34,8 @@ export function VideoOverlay({
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const mutedRef = useRef(muted);
+  const pausedRef = useRef(paused);
+  const ctlRef = useRef<{ pause: () => void; resume: () => void } | null>(null);
   const soundAllowedRef = useRef(false);
   const onDoneRef = useRef(onDone);
   const [playing, setPlaying] = useState(false);
@@ -91,6 +96,35 @@ export function VideoOverlay({
       if (!started) finish();
     }, STALL_MS);
     let maxTimer: number | undefined;
+    let maxRemaining = 0;
+    let maxArmedAt = 0;
+    const armMax = (ms: number) => {
+      maxRemaining = ms;
+      maxArmedAt = Date.now();
+      maxTimer = window.setTimeout(finish, ms);
+    };
+    ctlRef.current = {
+      pause: () => {
+        try {
+          playerRef.current?.pauseVideo();
+        } catch {
+          /* المشغّل لم يجهز بعد */
+        }
+        if (maxTimer !== undefined) {
+          window.clearTimeout(maxTimer);
+          maxTimer = undefined;
+          maxRemaining = Math.max(0, maxRemaining - (Date.now() - maxArmedAt));
+        }
+      },
+      resume: () => {
+        try {
+          playerRef.current?.playVideo();
+        } catch {
+          /* المشغّل لم يجهز بعد */
+        }
+        if (started && maxTimer === undefined && maxRemaining > 0) armMax(maxRemaining);
+      },
+    };
 
     const nav = navigator as Navigator & { userActivation?: { hasBeenActive: boolean } };
     const startMuted = !(nav.userActivation?.hasBeenActive ?? false) || mutedRef.current;
@@ -122,14 +156,14 @@ export function VideoOverlay({
           events: {
             onReady: (e) => {
               if (mutedRef.current) e.target.mute();
-              e.target.playVideo();
+              if (!pausedRef.current) e.target.playVideo();
               if (startMuted && !mutedRef.current) setNeedsSound(true);
             },
             onStateChange: (e) => {
               if (e.data === YT.PlayerState.PLAYING) {
                 if (!started) {
                   started = true;
-                  if (maxSec > 0) maxTimer = window.setTimeout(finish, maxSec * 1000);
+                  if (maxSec > 0) armMax(maxSec * 1000);
                 }
                 setPlaying(true);
               } else if (e.data === YT.PlayerState.ENDED) {
@@ -153,10 +187,17 @@ export function VideoOverlay({
         /* تجاهل */
       }
       playerRef.current = null;
+      ctlRef.current = null;
       host?.replaceChildren();
     };
     // مرة واحدة لكل عرض
   }, []);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) ctlRef.current?.pause();
+    else ctlRef.current?.resume();
+  }, [paused]);
 
   const enableSound = () => {
     const p = playerRef.current;

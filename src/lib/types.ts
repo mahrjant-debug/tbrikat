@@ -129,6 +129,26 @@ export interface VideoConfig {
   triggerId: string;
 }
 
+export type AnnounceStyle = 'gold' | 'emerald' | 'alert' | 'info';
+export type AnnounceMode = 'full' | 'banner';
+
+/** إعلان نصي يُنشر من لوحة المشرف ويظهر على الشاشة الرئيسية */
+export interface Announcement {
+  id: string;
+  title: string;
+  text: string;
+  style: AnnounceStyle;
+  /** full = ملء الشاشة، banner = شريط علوي والتهاني تستمر تحته */
+  mode: AnnounceMode;
+  durationSec: number;
+  /** 0 = لا يتكرر؛ وإلا يُعاد كل N دقيقة حتى repeatUntil */
+  repeatEveryMin: number;
+  repeatUntil: number;
+  createdAt: number;
+}
+
+export type AnnouncementInput = Omit<Announcement, 'id' | 'createdAt'>;
+
 export interface BannedWord {
   id: string;
   word: string;
@@ -138,7 +158,8 @@ export type BusMessage =
   | { type: 'approved'; cards: Congrat[] }
   | { type: 'spotlight'; photoId: string; at: number }
   | { type: 'sponsor'; partnerId: string; at: number }
-  | { type: 'video'; videoId: string; at: number };
+  | { type: 'video'; videoId: string; at: number }
+  | { type: 'announce'; id: string; at: number };
 
 export interface AdminProfile {
   /** بريد المشرف بأحرف صغيرة، وهو أيضاً معرّف الوثيقة */

@@ -8,6 +8,14 @@ export const FINALE_MS = 15_000;
 export const PARTNERS_ROTATE_MS = 5_000;
 /** قيمة triggerId لإيقاف الفيديو الجاري */
 export const VIDEO_STOP = '__stop__';
+/** قيمة triggerId لسحب الإعلان الجاري */
+export const ANNOUNCE_STOP = '__stop__';
+export const ANNOUNCE_TEXT_MAX = 600;
+/** الشريط العلوي يتسع لنص أقصر؛ للنص الأطول استخدم ملء الشاشة */
+export const ANNOUNCE_BANNER_TEXT_MAX = 250;
+export const ANNOUNCE_TITLE_MAX = 80;
+export const ANNOUNCE_MIN_SEC = 5;
+export const ANNOUNCE_MAX_SEC = 3600;
 /** أقصى عدد تهانٍ معتمدة تقرأها شاشة العرض (الأحدث أولاً) — يثبّت عدد القراءات لكل تحميل مهما كثرت التهاني */
 export const DISPLAY_MAX_CARDS = 150;
 /** إن فُتحت الشاشة متأخرة عن موعد فيديو بأقل من هذه المدة يُعرض فور فتحها، وإلا يُعدّ فائتاً */
