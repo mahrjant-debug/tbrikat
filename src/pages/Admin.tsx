@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Ban, Clapperboard, Handshake, Megaphone, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, BellOff, Ban, Clapperboard, Handshake, Megaphone, PartyPopper, Images, Inbox, Loader2, LogOut, Settings2, ShieldAlert, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { ToastProvider } from '../components/ui';
 import { useAdminAccess } from '../hooks/useAdminAccess';
@@ -10,6 +10,7 @@ import { backfillApprovedAt, patchSettings, subscribeAdmins } from '../lib/db';
 import type { AdminProfile, Settings } from '../lib/types';
 import { AdminsTab } from './admin/AdminsTab';
 import { AnnouncementsTab } from './admin/AnnouncementsTab';
+import { EndTab } from './admin/EndTab';
 import { BannedTab } from './admin/BannedTab';
 import { CongratsTab } from './admin/CongratsTab';
 import { Login } from './admin/Login';
@@ -18,7 +19,7 @@ import { PhotosTab } from './admin/PhotosTab';
 import { SettingsTab } from './admin/SettingsTab';
 import { VideosTab } from './admin/VideosTab';
 
-type Tab = 'congrats' | 'banned' | 'photos' | 'videos' | 'partners' | 'announcements' | 'admins' | 'settings';
+type Tab = 'congrats' | 'banned' | 'photos' | 'videos' | 'partners' | 'announcements' | 'ending' | 'admins' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'congrats', label: 'التهاني', icon: Inbox },
@@ -27,6 +28,7 @@ const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: 'photos', label: 'صور العرسان', icon: Images },
   { id: 'videos', label: 'الفيديو', icon: Clapperboard },
   { id: 'banned', label: 'الكلمات المحظورة', icon: Ban },
+  { id: 'ending', label: 'نهاية الحفل', icon: PartyPopper },
   { id: 'admins', label: 'المشرفون', icon: Users },
   { id: 'settings', label: 'الإعدادات', icon: Settings2 },
 ];
@@ -211,6 +213,11 @@ function Panel({ me }: { me: AdminProfile }) {
       {visited.has('announcements') ? (
         <div hidden={tab !== 'announcements'}>
           <AnnouncementsPane />
+        </div>
+      ) : null}
+      {visited.has('ending') ? (
+        <div hidden={tab !== 'ending'}>
+          <EndTab settings={settings} />
         </div>
       ) : null}
       {visited.has('photos') ? (

@@ -39,6 +39,10 @@ export const DEFAULT_SETTINGS: Settings = {
   spotlightTriggerAt: 0,
   spotlightPhotoId: '',
   bannedWords: [],
+  acceptingCongrats: true,
+  closeAt: 0,
+  closingMessage: '',
+  memoryMode: 'auto',
 };
 
 export const DEFAULT_VIDEO_CONFIG: VideoConfig = { enabled: false, intervalMin: 15, maxMin: 0, triggerAt: 0, triggerId: '' };
@@ -118,5 +122,9 @@ export function normalizeSettings(raw: Record<string, unknown> | undefined): Set
     spotlightTriggerAt: num(raw.spotlightTriggerAt, 0, 0, Number.MAX_SAFE_INTEGER),
     spotlightPhotoId: str(raw.spotlightPhotoId, ''),
     bannedWords: Array.isArray(raw.bannedWords) ? raw.bannedWords.filter((w): w is string => typeof w === 'string') : [],
+    acceptingCongrats: bool(raw.acceptingCongrats, true),
+    closeAt: num(raw.closeAt, 0, 0, Number.MAX_SAFE_INTEGER),
+    closingMessage: str(raw.closingMessage, ''),
+    memoryMode: raw.memoryMode === 'on' || raw.memoryMode === 'off' ? raw.memoryMode : 'auto',
   };
 }

@@ -72,6 +72,14 @@ export interface Settings {
   spotlightPhotoId: string;
   /** نسخة مجمّعة من الكلمات المحظورة (تُزامَن من تبويب الكلمات) ليقرأها الضيف في قراءة واحدة */
   bannedWords: string[];
+  /** false = أُنهي استقبال التهاني (تفرضه القواعد أيضاً) */
+  acceptingCongrats: boolean;
+  /** إغلاق تلقائي للاستقبال في هذا الوقت (مللي ثانية)؛ 0 = بلا */
+  closeAt: number;
+  /** رسالة الشكر لصفحة الضيف ولصندوق الشكر بالشاشة (فارغة = الرسالة الافتراضية) */
+  closingMessage: string;
+  /** وضع الذكرى على الشاشة: off = أبداً، auto = عند إغلاق الاستقبال، on = دائماً */
+  memoryMode: 'off' | 'auto' | 'on';
 }
 
 export interface Photo {

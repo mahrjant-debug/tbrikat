@@ -35,6 +35,14 @@ service cloud.firestore {
         && (d.role == 'admin' || d.role == 'owner');
     }
 
+    // استقبال التهاني مفتوح: لم يُنهِه المشرف ولم يحلّ وقت الإغلاق التلقائي (يُفرض هنا لا في الواجهة فقط)
+    function receivingOpen() {
+      return !exists(/databases/$(database)/documents/settings/global)
+        || (get(/databases/$(database)/documents/settings/global).data.get('acceptingCongrats', true) == true
+          && (get(/databases/$(database)/documents/settings/global).data.get('closeAt', 0) == 0
+            || request.time.toMillis() < get(/databases/$(database)/documents/settings/global).data.get('closeAt', 0)));
+    }
+
     // الاعتماد التلقائي مفعّل في الإعدادات ولا يشترط اعتماد المشرف
     function autoApproveOn() {
       return exists(/databases/$(database)/documents/settings/global)
@@ -44,7 +52,8 @@ service cloud.firestore {
 
     function validNewCongrat() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['name', 'text', 'status', 'createdAt', 'approvedAt'])
+      return receivingOpen()
+        && d.keys().hasOnly(['name', 'text', 'status', 'createdAt', 'approvedAt'])
         && d.keys().hasAll(['name', 'text', 'status', 'createdAt'])
         && (d.status == 'approved' || !d.keys().hasAny(['approvedAt']))
         && d.get('approvedAt', request.time) == request.time

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { CheckCircle2, Clock, Loader2, MonitorPlay, PenLine, Send, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Clock, Heart, Loader2, MonitorPlay, PenLine, Send, ShieldCheck } from 'lucide-react';
 import { Particles } from '../components/Particles';
 import { useSettingsOnce } from '../hooks/useData';
+import { useNowAt } from '../hooks/useReception';
+import { DEFAULT_CLOSING_MESSAGE, isReceptionClosed } from '../lib/reception';
 import { compileWordList } from '../lib/arabic';
 import { celebrateGuest } from '../lib/confetti';
 import { GUEST_COOLDOWN_MS, NAME_MAX, QUICK_PHRASES, TEXT_MAX } from '../lib/constants';
@@ -25,6 +27,10 @@ export default function Guest() {
   // قراءة واحدة للإعدادات (والكلمات المحظورة داخلها): لا اشتراك حي ولا قراءة كلمة بكلمة
   const { settings } = useSettingsOnce();
   const compiled = useMemo(() => compileWordList(settings.bannedWords), [settings.bannedWords]);
+  // انتهى الاستقبال: يدوياً أو بحلول وقت الإغلاق التلقائي، أو رفضت القواعد الإرسال (أُغلق والصفحة مفتوحة)
+  const nowTick = useNowAt(settings.closeAt);
+  const [deniedNow, setDeniedNow] = useState(false);
+  const closed = deniedNow || isReceptionClosed(settings, nowTick);
   const [name, setName] = useState(() => safeStorage.get(NAME_KEY) ?? '');
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -95,7 +101,8 @@ export default function Guest() {
       celebrateGuest();
     } catch (err) {
       handleFirestoreError('submit', err);
-      setError('تعذّر إرسال التهنئة الآن. تحقق من الاتصال وحاول مرة أخرى.');
+      if ((err as { code?: string } | null)?.code === 'permission-denied') setDeniedNow(true);
+      else setError('تعذّر إرسال التهنئة الآن. تحقق من الاتصال وحاول مرة أخرى.');
     } finally {
       setSending(false);
     }
@@ -110,7 +117,13 @@ export default function Guest() {
           <p className="font-cairo text-base font-bold text-ink-soft">{settings.title}</p>
         </header>
 
-        {result ? (
+        {closed && !result ? (
+          <section className="gold-frame rounded-3xl p-6 text-center" aria-live="polite">
+            <Heart className="mx-auto h-16 w-16 text-gold" fill="currentColor" aria-hidden="true" />
+            <h2 className="mt-3 font-cairo text-2xl font-extrabold text-ink">شكراً لحضوركم</h2>
+            <p className="mt-3 font-almarai text-base leading-8 text-ink-soft">{settings.closingMessage.trim() || DEFAULT_CLOSING_MESSAGE}</p>
+          </section>
+        ) : result ? (
           <section className="gold-frame rounded-3xl p-6 text-center" aria-live="polite">
             <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" aria-hidden="true" />
             <h2 className="mt-3 font-cairo text-2xl font-extrabold text-ink">شكراً لك، وصلت تهنئتك!</h2>

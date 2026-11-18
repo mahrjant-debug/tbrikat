@@ -11,6 +11,9 @@ import { PhotoStrip } from '../components/display/PhotoStrip';
 import { QrBox } from '../components/display/QrBox';
 import { SponsorSlide } from '../components/display/SponsorSlide';
 import { Spotlight } from '../components/display/Spotlight';
+import { ThanksBox } from '../components/display/ThanksBox';
+import { useNowAt } from '../hooks/useReception';
+import { isMemoryMode } from '../lib/reception';
 import { AnnouncementBanner, AnnouncementFull } from '../components/display/AnnouncementView';
 import { VideoOverlay } from '../components/display/VideoOverlay';
 import { getPreset } from '../data/backgrounds';
@@ -40,6 +43,13 @@ const MAX_TIMEOUT = 2_000_000_000;
 
 export default function Display() {
   const { settings, loaded } = useSettings();
+  // وضع الذكرى: بعد إنهاء استقبال التهاني (أو دائماً بحسب الإعداد) — بلا فيديو ولا إعلانات ولا شاشة شريك
+  const clockTick = useNowAt(settings.closeAt);
+  const memory = isMemoryMode(settings, clockTick);
+  const memoryRef = useRef(false);
+  useEffect(() => {
+    memoryRef.current = memory;
+  }, [memory]);
   const logo = useAsset('logo');
   const customBg = useAsset('background');
   const footerImg = useAsset('footer');
@@ -183,6 +193,10 @@ export default function Display() {
   const pendingSponsorRef = useRef<string | null>(null);
 
   const trySponsor = useCallback(() => {
+    if (memoryRef.current) {
+      pendingSponsorRef.current = null;
+      return;
+    }
     const want = pendingSponsorRef.current;
     if (want === null) return;
     const list = partnersRef.current;
@@ -260,6 +274,10 @@ export default function Display() {
   const repeatQueueRef = useRef<{ id: string; at: number }[]>([]);
 
   const tryVideo = useCallback(() => {
+    if (memoryRef.current) {
+      pendingVideoRef.current = null;
+      return;
+    }
     const list = videosRef.current;
     const now = Date.now();
     // فيديو حان موعده المستقل ولم يُعرض على هذا الجهاز بعد (له الأولوية على التناوب)
@@ -410,6 +428,7 @@ export default function Display() {
   }, []);
 
   const startAnn = useCallback((a: Announcement) => {
+    if (memoryRef.current) return;
     annFullRef.current = a.mode === 'full';
     setAnn({ a, key: Date.now() });
     const next = a.repeatEveryMin > 0 && a.repeatUntil > 0 ? Date.now() + a.repeatEveryMin * 60_000 : 0;
@@ -489,6 +508,19 @@ export default function Display() {
   );
 
   const annFull = ann !== null && ann.a.mode === 'full';
+
+  // الدخول في وضع الذكرى: تُغلق الفيديو والإعلان وشاشة الشريك الجارية وتُلغى تكراراتها المنتظرة
+  useEffect(() => {
+    if (!memory) return;
+    repeatQueueRef.current = [];
+    annRepeatRef.current = null;
+    annPendingRef.current = null;
+    pendingSponsorRef.current = null;
+    pendingVideoRef.current = null;
+    if (videoActiveRef.current) stopVideo();
+    if (sponsorActiveRef.current) onSponsorDone();
+    endAnn();
+  }, [memory, stopVideo, onSponsorDone, endAnn]);
 
   // ---------- تهيئة الصفحة ----------
   useEffect(() => {
@@ -613,7 +645,11 @@ export default function Display() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
           >
-            <QrBox className="max-lg:order-5" compact={showBoxDesktop} />
+            {memory ? (
+              <ThanksBox className="max-lg:order-5" names={settings.names} message={settings.closingMessage} />
+            ) : (
+              <QrBox className="max-lg:order-5" compact={showBoxDesktop} />
+            )}
             {showBoxMobile ? (
               <PartnersBox className={`max-lg:order-4 ${settings.partnersBox === 'mobile' ? 'lg:hidden' : ''}`} partners={partners} />
             ) : null}

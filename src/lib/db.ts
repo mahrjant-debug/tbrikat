@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -259,7 +260,12 @@ export async function batchSetStatus(items: { id: string; status: CongratStatus 
 
 export async function saveSettings(s: Settings): Promise<void> {
   // مفتاح تشغيل التسليط يُكتب فقط من زر «تسليط الضوء»؛ حفظ الإعدادات لا يلمسه حتى لا يُعيد تشغيله
-  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, sponsorTriggerAt: _s, sponsorTriggerId: _i, bannedWords: _b, ...rest } = s;
+  const { spotlightTriggerAt: _t, spotlightPhotoId: _p, sponsorTriggerAt: _s, sponsorTriggerId: _i, bannedWords: _b, acceptingCongrats: _a, closeAt: _c, closingMessage: _m, memoryMode: _mm, ...rest } = s;
+  // حقول نهاية الحفل تُكتب من تبويبها فقط، فلا تطغى عليها مسودة الإعدادات القديمة
+  void _a;
+  void _c;
+  void _m;
+  void _mm;
   void _b; // تُزامَن تلقائياً من تبويب الكلمات المحظورة، فلا تُكتب من مسودة الإعدادات
   void _t;
   void _p;
@@ -281,6 +287,12 @@ export async function backfillApprovedAt(items: { id: string; createdAt: number 
     for (const it of items.slice(i, i + 400)) batch.update(doc(db, 'congratulations', it.id), { approvedAt: Timestamp.fromMillis(it.createdAt) });
     await batch.commit();
   }
+}
+
+/** كل التهاني (للتصدير): قراءة واحدة بعدد الوثائق، بلا حد الـ600 الخاص بقائمة المراجعة */
+export async function fetchAllCongrats(): Promise<Congrat[]> {
+  const snap = await getDocs(query(collection(db, 'congratulations'), orderBy('createdAt', 'asc')));
+  return snap.docs.map(mapCongrat);
 }
 
 export async function patchSettings(patch: Partial<Settings>): Promise<void> {
